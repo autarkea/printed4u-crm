@@ -475,7 +475,7 @@ app.get('/api/items', async (req, res) => {
 // Получить мои реквизиты (всегда ID=1)
 app.get('/api/my-details', async (req, res) => {
     try {
-        const response = await axios.get(`${NOCO_API_URL}/${BASE_ID}/${process.env.TABLE_MY_DETAILS || "maob70r6njy4b31"}/1`, {
+        const response = await axios.get(`${NOCO_API_URL}/${BASE_ID}/${process.env.TABLE_MY_DETAILS}/1`, {
             headers: { 'xc-token': NOCO_API_TOKEN }
         });
         res.json(response.data);
@@ -489,7 +489,7 @@ app.get('/api/my-details', async (req, res) => {
 app.get('/api/client/:id', async (req, res) => {
     try {
         const clientId = req.params.id;
-        const response = await axios.get(`${NOCO_API_URL}/${BASE_ID}/${process.env.TABLE_LEGAL_ENTITIES || "mel0fql6jhtknu6"}/${clientId}`, {
+        const response = await axios.get(`${NOCO_API_URL}/${BASE_ID}/${process.env.TABLE_LEGAL_ENTITIES}/${clientId}`, {
             headers: { 'xc-token': NOCO_API_TOKEN }
         });
         res.json(response.data);
@@ -503,7 +503,7 @@ app.get('/api/client/:id', async (req, res) => {
 app.get('/api/contact/:id', async (req, res) => {
     try {
         const contactId = req.params.id;
-        const response = await axios.get(`${NOCO_API_URL}/${BASE_ID}/${process.env.TABLE_CONTACTS || "mh4tuppyvnapu7b"}/${contactId}`, {
+        const response = await axios.get(`${NOCO_API_URL}/${BASE_ID}/${process.env.TABLE_CONTACTS}/${contactId}`, {
             headers: { 'xc-token': NOCO_API_TOKEN }
         });
         res.json(response.data);
@@ -670,7 +670,7 @@ app.get('/send-email', requireSecret, async (req, res) => {
             if (contactId) {
                 try {
                     console.log(`🔍 Запрос контакта ID=${contactId}`);
-                    const contactRes = await axios.get(`${NOCO_API_URL}/${BASE_ID}/${process.env.TABLE_CONTACTS || "mh4tuppyvnapu7b"}/${contactId}`, {
+                    const contactRes = await axios.get(`${NOCO_API_URL}/${BASE_ID}/${process.env.TABLE_CONTACTS}/${contactId}`, {
                         headers: { 'xc-token': NOCO_API_TOKEN }
                     });
                     const contact = contactRes.data;
@@ -698,7 +698,7 @@ app.get('/send-email', requireSecret, async (req, res) => {
             if (legalId) {
                 try {
                     console.log(`🔍 Запрос юрлица ID=${legalId}`);
-                    const legalRes = await axios.get(`${NOCO_API_URL}/${BASE_ID}/process.env.TABLE_LEGAL_ENTITIES/${legalId}`, {
+                    const legalRes = await axios.get(`${NOCO_API_URL}/${BASE_ID}/${process.env.TABLE_LEGAL_ENTITIES}/${legalId}`, {
                         headers: { 'xc-token': NOCO_API_TOKEN }
                     });
                     const legal = legalRes.data;

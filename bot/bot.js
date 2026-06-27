@@ -1140,7 +1140,7 @@ bot.onText(/\/status/, async (msg) => {
     
     // 4. Проверяем Nginx через HTTPS запрос
     try {
-        const res = await axios.get(process.env.NOCO_DOMAIN || 'http://localhost:8081', { timeout: 3000, validateStatus: () => true }));
+        const res = await axios.get(process.env.NOCO_DOMAIN || 'http://localhost:8081', { timeout: 3000, validateStatus: () => true });
         message += '🟢 *Nginx:* active\n';
     } catch (err) {
         message += '🔴 *Nginx:* inactive ❌\n';
