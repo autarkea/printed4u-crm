@@ -1,0 +1,26 @@
+version: '3.8'
+services:
+  bot:
+    build: ./bot
+    container_name: printed4u-bot
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data/projects:/mnt/data/projects
+      - ./data/clients:/mnt/data/clients
+      - ./data/noco-static:/mnt/data/noco-static
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  webhook:
+    build: ./webhook
+    container_name: printed4u-webhook
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./data/projects:/mnt/data/projects
+      - ./data/clients:/mnt/data/clients
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Счет-договор</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; }
+body { font-family: 'Montserrat', Arial, sans-serif; font-size: 8.5pt; margin: 5mm; line-height: 1.2; color: #1a1a1a; }
+.header { text-align: center; font-weight: 700; font-size: 10pt; margin-bottom: 6px; }
+.intro-text { font-size: 8pt; text-align: justify; margin-bottom: 8px; line-height: 1.2; }
+.party-block { margin-bottom: 6px; line-height: 1.25; font-size: 8pt; }
+.party-block b { font-weight: 600; }
+.divider { border: none; border-top: 1.5px solid #333; margin: 8px 0; }
+.section-title { font-weight: 700; font-size: 8.5pt; margin-top: 10px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
+table { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 7.5pt; }
+th, td { border: 1px solid #333; padding: 2px 3px; vertical-align: middle; }
+th { background: #f0f0f0; font-weight: 600; text-align: center; font-size: 7pt; }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.total-row { font-weight: 600; }
+.vat-note { margin: 4px 0; font-size: 7.5pt; font-style: italic; color: #444; }
+.sum-words { margin: 6px 0 8px 0; font-weight: 600; font-size: 8.5pt; }
+.legal-text { margin: 4px 0; text-align: justify; font-size: 7.5pt; line-height: 1.2; }
+.legal-text p { margin: 3px 0; }
+.contacts-block { font-size: 8pt; line-height: 1.3; margin-top: 8px; }
+.contacts-block b { font-weight: 600; }
+.signatures { margin-top: 15px; display: flex; justify-content: flex-start; gap: 10px; font-size: 8pt; }
+.signature-block { width: 50%; line-height: 1.3; }
+.stamp-wrapper { position: relative; display: inline-block; }
+.stamp-img { display: none; position: absolute; top: -40px; left: 55px; width: 39mm; height: auto; opacity: 0.85; transform: rotate(-12deg); mix-blend-mode: multiply; pointer-events: none; z-index: 10; }
+.exec-sign-line { display: flex; align-items: flex-end; padding: 1px 5px 2px 5px; min-height: 18px; font-weight: 500; }
+.exec-sign-gap { border-bottom: 1px solid #000; width: 4cm; flex-shrink: 0; margin: 0 5px; }
+@media print { body { margin: 5mm; } @page { size: A4; margin: 5mm; } }
+</style>
+</head>
+<body>
+
+<div class="header">Счет-договор № <span id="schetNumber"></span> от <span id="schetDate"></span></div>
+<div class="intro-text">Настоящий Счет-договор (далее — «Счет») является неотъемлемой частью Договора-оферты от <span id="offerDateStatic"></span> (далее — «Оферта»), размещенной на сайте Исполнителя: printed4u.by/offer-b2b. Оплата Счета означает акцепт условий Оферты в соответствии со ст. 407 ГК РБ и п. 1.1 Оферты. Договор считается заключенным с момента поступления денежных средств на расчетный счет Исполнителя. В части, не урегулированной настоящим Счетом, применяются условия Оферты.</div>
+
+<div class="party-block">
+    <b>Исполнитель:</b> <span id="myName"></span> &nbsp;|&nbsp; <b>УНП:</b> <span id="myUNP"></span><br>
+    <b>Адрес:</b> <span id="myAddress"></span><br>
+    <b>Тел:</b> <span id="myPhone"></span> &nbsp;|&nbsp; <b>Email:</b> <span id="myEmail"></span><br>
+    <b>р/с:</b> <span id="myAccount"></span> в <span id="myBank"></span> &nbsp;|&nbsp; <b>БИК:</b> <span id="myBIK"></span>
+</div>
+<hr class="divider">
+<div class="party-block">
+    <b>Заказчик:</b> <span id="clientName"></span> <span id="clientUNP_block">&nbsp;|&nbsp; <b>УНП:</b> <span id="clientUNP"></span></span><br>
+    <b>Адрес:</b> <span id="clientAddress"></span><br>
+    <b>Тел:</b> <span id="clientPhone"></span> &nbsp;|&nbsp; <b>Email:</b> <span id="clientEmail"></span><br>
+    <b>Email для юр. документов:</b> <span id="clientLegalEmail"></span><br>
+    <span id="clientBank_block"><b>р/с:</b> <span id="clientAccount"></span><br>
+    <b>Банк:</b> <span id="clientBank"></span> &nbsp;|&nbsp; <b>БИК:</b> <span id="clientBIK"></span></span>
+</div>
+
+<div class="section-title">2. Предмет и стоимость</div>
+<table>
+    <thead><tr><th style="width:4%">№</th><th style="width:30%">Наименование</th><th style="width:6%">Кол-во</th><th style="width:10%">Цена без НДС, руб. коп.</th><th style="width:10%">Сумма без НДС, руб. коп.</th><th style="width:8%">Ставка НДС,%</th><th style="width:10%">Сумма НДС, руб. коп.</th><th style="width:10%">Сумма с НДС, руб. коп.</th></tr></thead>
+    <tbody id="works"></tbody>
+    <tfoot><tr class="total-row"><td colspan="4" style="text-align: right; font-weight: 600;">ИТОГО:</td><td class="text-right" id="totalSum"></td><td style="text-align: center;">x</td><td class="text-right" id="totalVAT"></td><td class="text-right" id="totalWithVAT"></td></tr></tfoot>
+</table>
+
+<div class="vat-note">НДС не исчисляется (Исполнитель применяет упрощенную систему налогообложения в соответствии с гл. 34 НК РБ).</div>
+<div class="sum-words">Сумма к оплате: <span id="sumWords"></span></div>
+
+<div class="section-title">3. Существенные условия</div>
+<div class="legal-text">
+    <p>3.1. <b>Оплата:</b> <span id="condPayment"></span></p>
+    <p>3.2. <b>Срок выполнения:</b> <span id="condTerm"></span>, исчисление с: <span id="condTermStart"></span></p>
+    <p>3.3. <b>Исходные данные:</b> <span id="condData"></span></p>
+    <p>3.4. <b>Передача изделий:</b> <span id="condDelivery"></span> → Риск случайной гибели/повреждения переходит к Заказчику с момента передачи отправления перевозчику (п. 11.2 Оферты, ст. 411 ГК РБ)</p>
+    <p style="page-break-inside: avoid !important; break-inside: avoid !important;">3.5. <b>Файлы 3D-моделей:</b> <span id="condIP"></span></p>
+    <p>3.6. <b>Портфолио:</b> <span id="condPortfolio"></span></p>
+    <p>3.7. <b>Счет действителен:</b> <span id="condValidity"></span></p>
+</div>
+
+<div class="section-title">4. Процедурные условия</div>
+<div class="legal-text">
+    <p>4.1. <b>Сдача-приемка:</b> Акт направляется по e-mail. Срок подписания/отказа — 5 рабочих дней с даты вручения, но не позднее 15 календарных дней с направления Акта по e-mail (п. 8.2 Оферты). При отсутствии ответа работы приняты без замечаний (п. 8.3 Оферты). Скрытые недостатки — не позднее 30 дней с приёмки (п. 8.4 Оферты).</p>
+    <p>4.2. <b>Качество:</b> Допуски по умолчанию (п. 7.3 Оферты): до 100 мм ±0,5 мм; 100–200 мм ±0,8 мм; свыше 200 мм ±1,2 мм.</p>
+    <p>4.3. <b>Ответственность:</b> Ограничена суммой, оплаченной по Счёту. Упущенная выгода не возмещается (п. 12.4 Оферты).</p>
+    <p>4.4. <b>Претензии:</b> Только по e-mail из разд. 5. Ответ — 15 дней. Споры — в Экономическом суде по месту нахождения Исполнителя (п. 15 Оферты).</p>
+    <p>4.5. <b>ЭДО:</b> Документы по e-mail имеют юр. силу. Мессенджеры — только для рабочих согласований (п. 3.4–3.6 Оферты).</p>
+</div>
+
+<div class="section-title">5. Контакты</div>
+<div class="contacts-block">
+    <b>Юр. документы:</b> Заказчик: <span id="contactLegalEmail"></span> | Исполнитель: info@printed4u.by<br>
+    <b>Рабочие согласования:</b> Заказчик: <span id="contactWorkPhone"></span> <span id="contactPerson"></span> | Исполнитель: <span id="executorContact"></span><br>
+    <i style="font-size: 7pt; color: #555;">Юр. сообщения через мессенджеры не порождают правовых последствий (п. 3.5 Оферты).</i>
+</div>
+
+<div class="signatures">
+    <div class="signature-block">
+        <b>Исполнитель:</b><br>
+        <div class="stamp-wrapper">
+            <div class="exec-sign-line"><span id="signTitle"></span><span class="exec-sign-gap"></span><span id="signName"></span></div>
+            <div style="font-size: 6.5pt; color: #444; margin-top: 2px; text-align: center;">(должность, ФИО, подпись)</div>
+            <img src="/img/stamp.png" alt="Печать" class="stamp-img" id="stampImg">
+        </div>
+    </div>
+</div>
+
+<script>
+// API_TOKEN удалён — используем прокси через server.js
+const BASE_ID = 'process.env.BASE_ID';
+const TABLE_PROJECTS = 'process.env.TABLE_PROJECTS';
+const TABLE_ITEMS = 'process.env.TABLE_ITEMS';
+const TABLE_CLIENTS = 'process.env.TABLE_LEGAL_ENTITIES';
+const TABLE_CONTACTS = 'process.env.TABLE_CONTACTS';
+const TABLE_MY_DETAILS = 'process.env.TABLE_MY_DETAILS';
+const TABLE_DOCS = 'process.env.TABLE_DOCUMENTS';
+
+const params = new URLSearchParams(window.location.search);
+const docId = params.get('doc');
+
+if (!docId || docId === 'ID' || isNaN(parseInt(docId))) {
+    document.body.innerHTML = '<h2>Ошибка: некорректный ID документа</h2><p>В адресной строке нужно указать реальный номер строки из таблицы "Документы".</p><p>Пример: <code>schet.html?doc=1</code></p>';
+} else {
+    loadData();
+}
+
+async function loadData() {
+    try {
+        const myRes = await fetch('/api/my-details');
+        const myDetails = await myRes.json();
+
+        const docRes = await fetch(`/api/doc/${docId}`);
+        const doc = await docRes.json();
+
+        let projectId = null;
+        const projectField = doc['Проект'];
+        if (projectField) {
+            if (Array.isArray(projectField)) projectId = projectField[0]?.Id || projectField[0];
+            else if (typeof projectField === 'object') projectId = projectField.Id;
+            else projectId = projectField;
+        }
+
+        if (!projectId) {
+            document.body.innerHTML = `<h2>Ошибка: документ не привязан к проекту</h2>`;
+            return;
+        }
+
+        const projectRes = await fetch(`/api/project/${projectId}`);
+        const project = await projectRes.json();
+
+        let clientId = null, contactId = null;
+        const юрлицоField = project['Юрлицо'];
+        if (юрлицоField) {
+            if (Array.isArray(юрлицоField)) clientId = юрлицоField[0]?.Id || юрлицоField[0];
+            else if (typeof юрлицоField === 'object') clientId = юрлицоField.Id;
+            else clientId = юрлицоField;
+        }
+        const контактField = project['Контакт'];
+        if (контактField) {
+            if (Array.isArray(контактField)) contactId = контактField[0]?.Id || контактField[0];
+            else if (typeof контактField === 'object') contactId = контактField.Id;
+            else contactId = контактField;
+        }
+
+        let юрлицо = {}, контакт = {};
+        if (clientId) {
+            const clientRes = await fetch(`/api/client/${clientId}`);
+            юрлицо = await clientRes.json();
+        }
+        if (contactId) {
+            const contactRes = await fetch(`/api/contact/${contactId}`);
+            контакт = await contactRes.json();
+        }
+
+        const itemsRes = await fetch('/api/items');
+        const itemsData = await itemsRes.json();
+        const allItems = itemsData.list || [];
+        
+        const schetItems = allItems.filter(w => {
+            return w.Проекты && (w.Проекты.Id == projectId || (Array.isArray(w.Проекты) && w.Проекты.some(p => p.Id == projectId)));
+        });
+        
+        renderDocument(doc, project, schetItems, юрлицо, контакт, myDetails);
+    } catch (err) {
+        document.body.innerHTML = `<h2>Ошибка загрузки данных</h2><p>${err.message}</p>`;
+        console.error(err);
+    }
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '___________';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('ru-RU');
+}
+
+function generateDocNumber(dateStr, id) {
+    if (!dateStr) return id;
+    const d = new Date(dateStr);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = String(d.getFullYear()).slice(-2);
+    return `${year}${month}${day}-${id}`;
+}
+
+function formatTerm(term) {
+    if (!term && term !== 0) return '___________';
+    const num = parseInt(term);
+    if (!isNaN(num) && String(term).trim() === String(num)) {
+        const lastTwo = num % 100;
+        const lastOne = num % 10;
+        let word = 'рабочих дней';
+        if (lastTwo < 10 || lastTwo > 20) {
+            if (lastOne === 1) word = 'рабочий день';
+            else if (lastOne >= 2 && lastOne <= 4) word = 'рабочих дня';
+        }
+        return `${num} ${word}`;
+    }
+    return term;
+}
+
+function renderDocument(doc, project, items, юрлицо, контакт, myDetails) {
+    const docNumber = generateDocNumber(doc['Дата документа'], docId);
+    document.getElementById('schetNumber').textContent = docNumber;
+    document.getElementById('schetDate').textContent = formatDate(doc['Дата документа']);
+    document.getElementById('offerDateStatic').textContent = formatDate(doc['Дата оферты']);
+
+    document.getElementById('myName').textContent = myDetails.Имя || '';
+    document.getElementById('myUNP').textContent = myDetails.УНП || '';
+    document.getElementById('myAddress').textContent = myDetails.Адрес || '';
+    document.getElementById('myPhone').textContent = myDetails.Телефон || '';
+    document.getElementById('myEmail').textContent = myDetails['E-mail'] || '';
+    document.getElementById('myAccount').textContent = myDetails['р/с'] || '';
+    document.getElementById('myBank').textContent = myDetails.Банк || '';
+    document.getElementById('myBIK').textContent = myDetails.БИК || '';
+
+    // Базовые данные для шапки
+    const clientName = юрлицо.Имя || контакт.Имя || '___________________';
+    const clientUNP = юрлицо.УНП || контакт.УНП || '___________';
+    const clientAddress = юрлицо.Адрес || контакт.Адрес || '___________';
+    
+    // В шапке (Заказчик) выводим телефон и email ЮРЛИЦА
+    const mainPhone = юрлицо.Телефон || контакт.Телефон || '___________';
+    const mainEmail = юрлицо['E-mail'] || контакт['E-mail'] || '___________';
+
+    document.getElementById('clientName').textContent = clientName;
+    document.getElementById('clientUNP').textContent = clientUNP;
+    document.getElementById('clientAddress').textContent = clientAddress;
+    document.getElementById('clientPhone').textContent = mainPhone;
+    document.getElementById('clientEmail').textContent = mainEmail;
+    document.getElementById('clientAccount').textContent = юрлицо['р/с'] || '___________';
+    document.getElementById('clientBank').textContent = юрлицо.Банк || '___________';
+    document.getElementById('clientBIK').textContent = юрлицо.БИК || '___________';
+
+    // Внизу: Email для юр. документов (Приоритет: Контакт)
+    const legalEmail = контакт['E-mail'] || юрлицо['E-mail'] || '___________';
+    document.getElementById('clientLegalEmail').textContent = legalEmail;
+    document.getElementById('contactLegalEmail').textContent = legalEmail;
+
+    // Внизу: Рабочие согласования (Приоритет: Контакт, Имя берем строго из Контакта)
+    const workPhone = контакт.Телефон || юрлицо.Телефон || '___________';
+    const workName = контакт.Имя || юрлицо.Имя || ''; 
+    
+    document.getElementById('contactWorkPhone').textContent = workPhone;
+    document.getElementById('contactPerson').textContent = workName ? `(${workName})` : '';
+
+    document.getElementById('executorContact').textContent = doc['Ответственный'] || '+375 29 256-76-47 Александр';
+
+    document.getElementById('condPayment').textContent = doc['Оплата'] || '___________';
+    document.getElementById('condTerm').textContent = formatTerm(doc['Срок выполнения']);
+    document.getElementById('condTermStart').textContent = doc['Срок начинается с'] || '___________';
+    document.getElementById('condData').textContent = doc['Данные'] || '___________';
+    document.getElementById('condDelivery').textContent = doc['Доставка'] || '___________';
+    document.getElementById('condIP').textContent = doc['Интеллектуалка'] || '___________';
+    document.getElementById('condPortfolio').textContent = doc['Портфолио'] || '___________';
+    document.getElementById('condValidity').textContent = formatTerm(doc['Срок счета']);
+
+    const signTitle = myDetails.Подписант || 'Директор';
+    const signName = myDetails['Подписант ФИО'] || 'А.Г. Жибрик';
+    document.getElementById('signTitle').textContent = signTitle;
+    document.getElementById('signName').textContent = signName;
+
+    const hasStamp = doc['С печатью'] === true || doc['С печатью'] === 1 || doc['С печатью'] === '1' || doc['С печатью'] === 'true';
+    document.getElementById('stampImg').style.display = hasStamp ? 'block' : 'none';
+
+    const tbody = document.getElementById('works');
+    let totalSum = 0, totalVAT = 0;
+    
+    items.forEach((work, idx) => {
+        const qty = work['Кол-во'] || 0;
+        const price = work.Цена || 0;
+        const sumWithoutVAT = qty * price;
+        totalSum += sumWithoutVAT;
+        const row = document.createElement('tr');
+        row.innerHTML = `<td class="text-center">${idx + 1}</td><td>${work.Название || 'Работа/Товар'}</td><td class="text-center">${qty}</td><td class="text-right">${price.toFixed(2)}</td><td class="text-right">${sumWithoutVAT.toFixed(2)}</td><td class="text-center">Без НДС</td><td class="text-right">0.00</td><td class="text-right">${sumWithoutVAT.toFixed(2)}</td>`;
+        tbody.appendChild(row);
+    });
+    
+    const totalWithVAT = totalSum + totalVAT;
+    document.getElementById('totalSum').textContent = totalSum.toFixed(2) + ' руб.';
+    document.getElementById('totalVAT').textContent = totalVAT.toFixed(2) + ' руб.';
+    document.getElementById('totalWithVAT').textContent = totalWithVAT.toFixed(2) + ' руб.';
+    document.getElementById('sumWords').textContent = numberToWords(totalWithVAT);
+}
+
+function numberToWords(num) {
+    const units = ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'];
+    const unitsFem = ['', 'одна', 'две', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'];
+    const teens = ['десять', 'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать', 'семнадцать', 'восемнадцать', 'девятнадцать'];
+    const tens = ['', '', 'двадцать', 'тридцать', 'сорок', 'пятьдесят', 'шестьдесят', 'семьдесят', 'восемьдесят', 'девяносто'];
+    const hundreds = ['', 'сто', 'двести', 'триста', 'четыреста', 'пятьсот', 'шестьсот', 'семьсот', 'восемьсот', 'девятьсот'];
+    function convertTriplet(n, feminine = false) {
+        let result = '';
+        const u = feminine ? unitsFem : units;
+        if (n >= 100) { result += hundreds[Math.floor(n / 100)] + ' '; n %= 100; }
+        if (n >= 20) { result += tens[Math.floor(n / 10)] + ' '; n %= 10; }
+        else if (n >= 10) { result += teens[n - 10] + ' '; return result.trim(); }
+        if (n > 0) { result += u[n] + ' '; }
+        return result.trim();
+    }
+    const rubles = Math.floor(num);
+    const kopecks = Math.round((num - rubles) * 100);
+    let result = '';
+    if (rubles === 0) { result = 'ноль'; }
+    else if (rubles < 1000) { result = convertTriplet(rubles, false); }
+    else if (rubles < 1000000) {
+        const thousands = Math.floor(rubles / 1000);
+        const rest = rubles % 1000;
+        result = convertTriplet(thousands, true) + ' ' + (thousands === 1 ? 'тысяча' : thousands < 5 ? 'тысячи' : 'тысяч');
+        if (rest > 0) result += ' ' + convertTriplet(rest, false);
+    } else {
+        const millions = Math.floor(rubles / 1000000);
+        const thousands = Math.floor((rubles % 1000000) / 1000);
+        const rest = rubles % 1000;
+        result = convertTriplet(millions, false) + ' ' + (millions === 1 ? 'миллион' : millions < 5 ? 'миллиона' : 'миллионов');
+        if (thousands > 0) result += ' ' + convertTriplet(thousands, true) + ' ' + (thousands === 1 ? 'тысяча' : thousands < 5 ? 'тысячи' : 'тысяч');
+        if (rest > 0) result += ' ' + convertTriplet(rest, false);
+    }
+    const lastTwo = rubles % 100;
+    const lastOne = rubles % 10;
+    let rubWord = 'белорусских рублей';
+    if (lastTwo < 10 || lastTwo > 20) {
+        if (lastOne === 1) rubWord = 'белорусский рубль';
+        else if (lastOne >= 2 && lastOne <= 4) rubWord = 'белорусских рубля';
+    }
+    let kopWord = 'копеек';
+    if (kopecks > 0) {
+        const kopLastTwo = kopecks % 100;
+        const kopLastOne = kopecks % 10;
+        if (kopLastTwo < 10 || kopLastTwo > 20) {
+            if (kopLastOne === 1) kopWord = 'копейка';
+            else if (kopLastOne >= 2 && kopLastOne <= 4) kopWord = 'копейки';
+        }
+    }
+    const kopStr = kopecks.toString().padStart(2, '0');
+    return `${result.trim()} ${rubWord} ${kopStr} ${kopWord}`;
+}
+</script>
+</body>
+</html>

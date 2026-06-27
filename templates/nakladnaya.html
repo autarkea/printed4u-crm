@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Товарная накладная</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; }
+body { font-family: 'Montserrat', Arial, sans-serif; font-size: 8pt; margin: 5mm; line-height: 1.1; color: #000; }
+.top-container { display: flex; justify-content: center; align-items: flex-end; width: 100%; margin-bottom: 0; }
+.unp-side-label { font-weight: 700; font-size: 8.5pt; margin-right: 10px; padding-bottom: 4px; }
+.top-table { border-collapse: collapse; font-size: 8.5pt; width: auto; }
+.top-table td { border: 1px solid #000; padding: 3px 15px; text-align: center; }
+.header-cell { font-weight: 700; background: #f5f5f5; }
+.spacer-compact { height: 5mm; }
+.date-line { text-align: center; font-size: 9pt; margin: 5px 0 8px 0; font-weight: 500; }
+.details-block { width: 100%; margin-bottom: 8px; }
+.detail-row { display: flex; align-items: flex-start; margin-bottom: 2px; }
+.detail-label { font-weight: 600; width: 140px; flex-shrink: 0; padding-top: 2px; text-align: left; }
+.detail-content { flex-grow: 1; display: flex; flex-direction: column; }
+.detail-value { border-bottom: 1px solid #000; padding: 1px 4px 2px 4px; min-height: 14px; font-weight: 500; text-align: left; }
+.detail-caption { font-size: 6.5pt; color: #444; margin-top: 2px; text-align: center; }
+.section-header { font-weight: 700; font-size: 9pt; text-align: center; margin: 6px 0 4px 0; text-transform: uppercase; }
+.goods-table { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 7.5pt; }
+.goods-table th, .goods-table td { border: 1px solid #000; padding: 2px 3px; vertical-align: middle; }
+.goods-table th { background: #f5f5f5; font-weight: 600; text-align: center; }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.total-row { font-weight: 600; background: #fafafa; }
+.total-section { margin: 6px 0; font-size: 8pt; }
+.total-line { margin: 2px 0; }
+
+.signatures-block { width: 100%; margin-top: 4px; page-break-inside: avoid; }
+.signature-full-row { display: flex; align-items: flex-start; margin-bottom: 4px; }
+.signature-label { font-weight: 600; min-width: 160px; padding-top: 2px; text-align: left; white-space: nowrap; }
+.signature-content { flex-grow: 1; display: flex; flex-direction: column; }
+.signature-line { min-height: 14px; padding: 1px 4px 2px 4px; font-weight: 500; }
+.signature-caption { font-size: 6.5pt; color: #444; margin-top: 2px; text-align: center; line-height: 1.2; }
+
+.poat-row { display: flex; align-items: flex-end; width: 100%; white-space: nowrap; gap: 15px; }
+.poat-col { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.poat-col-1 { flex: 1; }
+.poat-col-2 { flex: 1.2; }
+.poat-col-3 { flex: 1; max-width: 220px; }
+.poat-line { border-bottom: 1px solid #000; display: inline-block; vertical-align: bottom; height: 18px; }
+.poat-line-sig { width: 100%; }
+.poat-line-num { width: 45px; margin: 0 4px; }
+.poat-line-date { width: 65px; margin: 0 4px; }
+.poat-line-org { width: 150px; margin-left: 4px; }
+.poat-text { font-size: 7.5pt; display: inline-flex; align-items: flex-end; }
+.poat-caption { font-size: 6.5pt; color: #444; margin-top: 2px; text-align: center; line-height: 1.2; white-space: normal; }
+
+@media print {
+    body { margin: 5mm; }
+    @page { size: A4; margin: 5mm; }
+    .spacer-compact { height: 3mm !important; }
+    .signature-label { min-width: 140px !important; }
+    .poat-row { gap: 10px !important; }
+    .poat-line-org { width: 130px !important; }
+    .poat-line-num { width: 40px !important; }
+    .poat-line-date { width: 60px !important; }
+    a { text-decoration: none; color: #000; }
+}
+</style>
+</head>
+<body>
+
+<div class="top-container">
+    <div class="unp-side-label">УНП</div>
+    <table class="top-table">
+        <tr>
+            <td class="header-cell">Грузоотправитель</td>
+            <td class="header-cell">Грузополучатель</td>
+        </tr>
+        <tr>
+            <td id="shipperUNP_top"></td>
+            <td id="consigneeUNP_top"></td>
+        </tr>
+    </table>
+</div>
+
+<div style="height: 35mm;"></div>
+
+<div class="date-line">
+    «<span id="tnDay">__</span>» <span id="tnMonth">________</span> 20<span id="tnYear">__</span> г.
+</div>
+
+<div class="details-block">
+    <div class="detail-row">
+        <div class="detail-label">Грузоотправитель</div>
+        <div class="detail-content">
+            <span class="detail-value" id="shipperLine"></span>
+            <span class="detail-caption">(наименование, адрес)</span>
+        </div>
+    </div>
+
+    <div class="detail-row">
+        <div class="detail-label">Грузополучатель</div>
+        <div class="detail-content">
+            <span class="detail-value" id="consigneeLine"></span>
+            <span class="detail-caption">(наименование, адрес)</span>
+        </div>
+    </div>
+
+    <div class="detail-row">
+        <div class="detail-label">Основание отпуска</div>
+        <div class="detail-content">
+            <span class="detail-value" id="basisLine"></span>
+            <span class="detail-caption">(наименование, дата и номер документа)</span>
+        </div>
+    </div>
+</div>
+
+<div class="section-header">I. ТОВАРНЫЙ РАЗДЕЛ</div>
+
+<table class="goods-table">
+    <thead>
+        <tr>
+            <th style="width:4%">№<br>п/п</th>
+            <th style="width:32%">Наименование товара</th>
+            <th style="width:8%">Единица<br>измерения</th>
+            <th style="width:8%">Коли-<br>чество</th>
+            <th style="width:11%">Цена,<br>руб. коп.</th>
+            <th style="width:11%">Стоимость,<br>руб. коп.</th>
+            <th style="width:8%">Ставка<br>НДС, %</th>
+            <th style="width:8%">Сумма<br>НДС,<br>руб. коп.</th>
+            <th style="width:11%">Стоимость<br>с НДС,<br>руб. коп.</th>
+            <th style="width:7%">Приме-<br>чание</th>
+        </tr>
+    </thead>
+    <tbody id="items"></tbody>
+    <tfoot>
+        <tr class="total-row">
+            <td colspan="3" style="text-align: right; font-weight: 600;">ИТОГО:</td>
+            <td class="text-center" id="totalQty"></td>
+            <td class="text-right" id="totalPrice"></td>
+            <td class="text-right" id="totalSum"></td>
+            <td style="text-align: center;">x</td>
+            <td class="text-right" id="totalVAT"></td>
+            <td class="text-right" id="totalWithVAT"></td>
+            <td>x</td>
+        </tr>
+    </tfoot>
+</table>
+
+<div class="total-section">
+    <div class="total-line">
+        <b>Всего сумма НДС:</b> 
+        <span id="vatWords"></span> 
+    </div>
+    <div class="total-line">
+        <b>Всего стоимость с НДС:</b> 
+        <span id="sumWords"></span> 
+    </div>
+</div>
+
+<div class="signatures-block">
+    
+    <div class="signature-full-row">
+        <div class="signature-label">Отпуск разрешил</div>
+        <div class="signature-content">
+            <div class="signature-line" style="display: flex; align-items: flex-end; border-bottom: 1px solid #000; padding: 1px 4px 2px 4px;">
+                <span id="signTitle1"></span>
+                <span style="width: 4cm; flex-shrink: 0;"></span>
+                <span id="signName1"></span>
+            </div>
+            <span class="signature-caption">(должность, ФИО, подпись)</span>
+        </div>
+    </div>
+    
+    <div class="signature-full-row">
+        <div class="signature-label">Сдал грузоотправитель</div>
+        <div class="signature-content">
+            <div class="signature-line" style="display: flex; align-items: flex-end; border-bottom: 1px solid #000; padding: 1px 4px 2px 4px;">
+                <span id="signTitle2"></span>
+                <span style="width: 4cm; flex-shrink: 0;"></span>
+                <span id="signName2"></span>
+            </div>
+            <span class="signature-caption">(должность, ФИО, подпись)</span>
+        </div>
+    </div>
+    
+    <div class="signature-full-row">
+        <div class="signature-label">Товар к доставке принял</div>
+        <div class="signature-content">
+            <div class="poat-row">
+                <div class="poat-col poat-col-1">
+                    <div class="poat-line poat-line-sig"></div>
+                    <div class="poat-caption">(должность, ФИО, подпись)</div>
+                </div>
+                <div class="poat-col poat-col-2">
+                    <div class="poat-text">
+                        по доверенности №<span class="poat-line poat-line-num"></span>от<span class="poat-line poat-line-date"></span>
+                    </div>
+                    <div class="poat-caption">(номер, дата)</div>
+                </div>
+                <div class="poat-col poat-col-3">
+                    <div class="poat-text">
+                        выданной<span class="poat-line poat-line-org"></span>
+                    </div>
+                    <div class="poat-caption">(наименование организации)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="signature-full-row">
+        <div class="signature-label">Принял грузополучатель</div>
+        <div class="signature-content">
+            <div class="signature-line" style="border-bottom: 1px solid #000; min-height: 14px;" id="signLine4"></div>
+            <span class="signature-caption">(должность, ФИО, подпись)</span>
+        </div>
+    </div>
+    
+</div>
+
+<div style="margin-top: 12px; font-size: 8pt; display: flex; align-items: baseline;">
+    <div style="font-weight: 600; min-width: 200px;">С товаром переданы документы:</div>
+    <div style="flex-grow: 1; padding: 1px 5px;" id="docsLine"></div>
+</div>
+
+<script>
+// API_TOKEN удалён — используем прокси через server.js
+const BASE_ID = 'process.env.BASE_ID';
+const TABLE_PROJECTS = 'process.env.TABLE_PROJECTS';
+const TABLE_ITEMS = 'process.env.TABLE_ITEMS';
+const TABLE_CLIENTS = 'process.env.TABLE_LEGAL_ENTITIES';
+const TABLE_CONTACTS = 'process.env.TABLE_CONTACTS';
+const TABLE_MY_DETAILS = 'process.env.TABLE_MY_DETAILS';
+const TABLE_DOCS = 'process.env.TABLE_DOCUMENTS';
+
+const params = new URLSearchParams(window.location.search);
+const docId = params.get('doc');
+
+if (!docId || docId === 'ID' || isNaN(parseInt(docId))) {
+    document.body.innerHTML = '<h2>Ошибка: некорректный ID документа</h2><p>Используйте: nakladnaya.html?doc=НОМЕР</p>';
+} else {
+    loadData();
+}
+
+async function loadData() {
+    try {
+        const myRes = await fetch('/api/my-details');
+        const myDetails = await myRes.json();
+
+        const docRes = await fetch(`/api/doc/${docId}`);
+        const doc = await docRes.json();
+
+        let projectId = null;
+        const projectField = doc['Проект'];
+        if (projectField) {
+            if (Array.isArray(projectField)) projectId = projectField[0]?.Id || projectField[0];
+            else if (typeof projectField === 'object') projectId = projectField.Id;
+            else projectId = projectField;
+        }
+
+        if (!projectId) {
+            document.body.innerHTML = '<h2>Ошибка: документ не привязан к проекту</h2>';
+            return;
+        }
+
+        const projectRes = await fetch(`/api/project/${projectId}`);
+        const project = await projectRes.json();
+
+        let clientId = null, contactId = null;
+        const юрлицоField = project['Юрлицо'];
+        if (юрлицоField) {
+            if (Array.isArray(юрлицоField)) clientId = юрлицоField[0]?.Id || юрлицоField[0];
+            else if (typeof юрлицоField === 'object') clientId = юрлицоField.Id;
+            else clientId = юрлицоField;
+        }
+        const контактField = project['Контакт'];
+        if (контактField) {
+            if (Array.isArray(контактField)) contactId = контактField[0]?.Id || контактField[0];
+            else if (typeof контактField === 'object') contactId = контактField.Id;
+            else contactId = контактField;
+        }
+
+        let юрлицо = {}, контакт = {};
+        if (clientId) {
+            const clientRes = await fetch(`/api/client/${clientId}`);
+            юрлицо = await clientRes.json();
+        }
+        if (contactId) {
+            const contactRes = await fetch(`/api/contact/${contactId}`);
+            контакт = await contactRes.json();
+        }
+
+        const itemsRes = await fetch('/api/items');
+        const itemsData = await itemsRes.json();
+        const allItems = itemsData.list || [];
+        
+        const tnItems = allItems.filter(w => {
+            const isLinked = w.Проекты && (w.Проекты.Id == projectId || (Array.isArray(w.Проекты) && w.Проекты.some(p => p.Id == projectId)));
+            const isGoods = w['Тип'] && w['Тип'].includes('Товар');
+            return isLinked && isGoods;
+        });
+
+        const invoiceRes = await fetch('/api/docs');
+        const invoiceData = await invoiceRes.json();
+        const allDocs = invoiceData.list || [];
+        // 🔍 Ищем ПОСЛЕДНИЙ счёт проекта (по ID — самый новый)
+        const invoiceDoc = allDocs
+            .filter(d => {
+                let pId = null;
+                const pf = d['Проект'];
+                if (pf) {
+                    if (Array.isArray(pf)) pId = pf[0]?.Id || pf[0];
+                    else if (typeof pf === 'object') pId = pf.Id;
+                    else pId = pf;
+                }
+                return pId == projectId && d['Тип документа'] === 'Счет';
+            })
+            .sort((a, b) => b.Id - a.Id)[0];  // Сортируем по ID (убывание), берём первый
+        
+        if (invoiceDoc) {
+            console.log(`📄 Найден последний счёт: ID=${invoiceDoc.Id}, дата=${invoiceDoc['Дата документа']}`);
+        } else {
+            console.log(`⚠️ Счета для проекта #${projectId} не найдены`);
+        }
+        
+        renderDocument(doc, project, tnItems, юрлицо, контакт, myDetails, invoiceDoc);
+    } catch (err) {
+        document.body.innerHTML = `<h2>Ошибка загрузки данных</h2><p>${err.message}</p>`;
+        console.error(err);
+    }
+}
+
+function formatDateTN(dateStr) {
+    if (!dateStr) return { day: '__', month: '________', year: '__' };
+    const d = new Date(dateStr);
+    const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+    return {
+        day: String(d.getDate()).padStart(2, '0'),
+        month: months[d.getMonth()],
+        year: String(d.getFullYear()).slice(-2)
+    };
+}
+
+function formatDateSimple(dateStr) {
+    if (!dateStr) return '___________';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('ru-RU');
+}
+
+function generateDocNumber(dateStr, id) {
+    if (!dateStr) return id;
+    const d = new Date(dateStr);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = String(d.getFullYear()).slice(-2);
+    return `${year}${month}${day}-${id}`;
+}
+
+function renderDocument(doc, project, items, юрлицо, контакт, myDetails, invoiceDoc) {
+    const tnDate = formatDateTN(doc['Дата документа']);
+    document.getElementById('tnDay').textContent = tnDate.day;
+    document.getElementById('tnMonth').textContent = tnDate.month;
+    document.getElementById('tnYear').textContent = tnDate.year;
+
+    document.getElementById('shipperUNP_top').textContent = myDetails.УНП || '';
+    document.getElementById('consigneeUNP_top').textContent = юрлицо.УНП || контакт.УНП || '';
+
+    const deliveryAddress = юрлицо['Адрес доставки'] || юрлицо.Адрес || контакт.Адрес || '';
+
+    document.getElementById('shipperLine').textContent = `${myDetails.Имя || ''}, ${myDetails.Адрес || ''}`;
+    document.getElementById('consigneeLine').textContent = `${юрлицо.Имя || контакт.Имя || ''}, ${deliveryAddress}`;
+    
+    let invoiceNumber = '___________';
+    let invoiceDate = '___________';
+    if (invoiceDoc) {
+        invoiceNumber = generateDocNumber(invoiceDoc['Дата документа'], invoiceDoc.Id);
+        invoiceDate = formatDateSimple(invoiceDoc['Дата документа']);
+    }
+    const offerDate = formatDateSimple(doc['Дата оферты']);
+    
+    const basisText = `Счет-договор № ${invoiceNumber} от ${invoiceDate} и Договор-оферта от ${offerDate} (printed4u.by/offer-b2b)`;
+    document.getElementById('basisLine').innerHTML = basisText;
+
+    const signTitle = myDetails.Подписант || 'Директор';
+    const signName = myDetails['Подписант ФИО'] || 'А.Г. Жибрик';
+    
+    document.getElementById('signTitle1').textContent = signTitle;
+    document.getElementById('signName1').textContent = signName;
+    document.getElementById('signTitle2').textContent = signTitle;
+    document.getElementById('signName2').textContent = signName;
+    
+    document.getElementById('signLine4').textContent = '';
+
+    const tnNumber = doc['Номер ТН'] || '';
+    document.getElementById('docsLine').textContent = tnNumber ? `Товарная накладная ${tnNumber}` : 'Товарная накладная';
+
+    const tbody = document.getElementById('items');
+    let totalQty = 0;
+    let totalSum = 0;
+    let totalVAT = 0;
+    let totalWithVAT = 0;
+    
+    items.forEach((item, idx) => {
+        const qty = item['Кол-во'] || 0;
+        const price = item.Цена || 0;
+        const sum = item.Сумма || (qty * price);
+        const vat = 0;
+        const sumWithVat = sum;
+        
+        totalQty += qty;
+        totalSum += sum;
+        totalVAT += vat;
+        totalWithVAT += sumWithVat;
+        
+        const row = document.createElement('tr');
+        const itemName = item['Название (ТН)'] || item.Название || 'Товар';
+        row.innerHTML = `
+            <td class="text-center">${idx + 1}</td>
+            <td>${itemName}</td>
+            <td class="text-center">шт.</td>
+            <td class="text-center">${qty}</td>
+            <td class="text-right">${price.toFixed(2)}</td>
+            <td class="text-right">${sum.toFixed(2)}</td>
+            <td class="text-center">Без НДС</td>
+            <td class="text-right">${vat.toFixed(2)}</td>
+            <td class="text-right">${sumWithVat.toFixed(2)}</td>
+            <td></td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    document.getElementById('totalQty').textContent = totalQty;
+    document.getElementById('totalPrice').textContent = '-';
+    document.getElementById('totalSum').textContent = totalSum.toFixed(2);
+    document.getElementById('totalVAT').textContent = totalVAT.toFixed(2);
+    document.getElementById('totalWithVAT').textContent = totalWithVAT.toFixed(2);
+    
+    document.getElementById('vatWords').textContent = numberToWords(totalVAT);
+    // Цифровая сумма НДС в скобках убрана
+    document.getElementById('sumWords').textContent = numberToWords(totalWithVAT);
+    // Цифровая сумма в скобках убрана
+}
+
+function numberToWords(num) {
+    const units = ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'];
+    const unitsFem = ['', 'одна', 'две', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'];
+    const teens = ['десять', 'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать', 'семнадцать', 'восемнадцать', 'девятнадцать'];
+    const tens = ['', '', 'двадцать', 'тридцать', 'сорок', 'пятьдесят', 'шестьдесят', 'семьдесят', 'восемьдесят', 'девяносто'];
+    const hundreds = ['', 'сто', 'двести', 'триста', 'четыреста', 'пятьсот', 'шестьсот', 'семьсот', 'восемьсот', 'девятьсот'];
+    
+    function convertTriplet(n, feminine = false) {
+        let result = '';
+        const u = feminine ? unitsFem : units;
+        if (n >= 100) { result += hundreds[Math.floor(n / 100)] + ' '; n %= 100; }
+        if (n >= 20) { result += tens[Math.floor(n / 10)] + ' '; n %= 10; }
+        else if (n >= 10) { result += teens[n - 10] + ' '; return result.trim(); }
+        if (n > 0) { result += u[n] + ' '; }
+        return result.trim();
+    }
+    
+    const rubles = Math.floor(num);
+    const kopecks = Math.round((num - rubles) * 100);
+    let result = '';
+    
+    if (rubles === 0) { result = 'ноль'; }
+    else if (rubles < 1000) { result = convertTriplet(rubles, false); }
+    else if (rubles < 1000000) {
+        const thousands = Math.floor(rubles / 1000);
+        const rest = rubles % 1000;
+        result = convertTriplet(thousands, true) + ' ' + (thousands === 1 ? 'тысяча' : thousands < 5 ? 'тысячи' : 'тысяч');
+        if (rest > 0) result += ' ' + convertTriplet(rest, false);
+    } else {
+        const millions = Math.floor(rubles / 1000000);
+        const thousands = Math.floor((rubles % 1000000) / 1000);
+        const rest = rubles % 1000;
+        result = convertTriplet(millions, false) + ' ' + (millions === 1 ? 'миллион' : millions < 5 ? 'миллиона' : 'миллионов');
+        if (thousands > 0) result += ' ' + convertTriplet(thousands, true) + ' ' + (thousands === 1 ? 'тысяча' : thousands < 5 ? 'тысячи' : 'тысяч');
+        if (rest > 0) result += ' ' + convertTriplet(rest, false);
+    }
+    
+    const lastTwo = rubles % 100;
+    const lastOne = rubles % 10;
+    let rubWord = 'белорусских рублей';
+    if (lastTwo < 10 || lastTwo > 20) {
+        if (lastOne === 1) rubWord = 'белорусский рубль';
+        else if (lastOne >= 2 && lastOne <= 4) rubWord = 'белорусских рубля';
+    }
+    
+    let kopWord = 'копеек';
+    if (kopecks > 0) {
+        const kopLastTwo = kopecks % 100;
+        const kopLastOne = kopecks % 10;
+        if (kopLastTwo < 10 || kopLastTwo > 20) {
+            if (kopLastOne === 1) kopWord = 'копейка';
+            else if (kopLastOne >= 2 && kopLastOne <= 4) kopWord = 'копейки';
+        }
+    }
+    
+    const kopStr = kopecks.toString().padStart(2, '0');
+    return `${result.trim()} ${rubWord} ${kopStr} ${kopWord}`;
+}
+</script>
+</body>
+</html>
