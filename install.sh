@@ -63,7 +63,6 @@ sudo chown -R $USER:$USER $DATA_DIR
 
 echo -e "${GREEN}✅ Папки созданы${NC}"
 echo ""
-
 # ============================================
 # ШАГ 3: Скачивание кода с GitHub
 # ============================================
@@ -74,7 +73,7 @@ INSTALL_DIR="/opt/printed4u-crm"
 if [ -d "$INSTALL_DIR" ]; then
     echo -e "${YELLOW}⚠️  Папка уже существует${NC}"
     
-    # Исправляем права (на случай если папка создана от root)
+    # Исправляем права на случай если папка создана от root
     sudo chown -R $USER:$USER $INSTALL_DIR
     
     cd $INSTALL_DIR
