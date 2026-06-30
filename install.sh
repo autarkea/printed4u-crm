@@ -73,6 +73,10 @@ INSTALL_DIR="/opt/printed4u-crm"
 
 if [ -d "$INSTALL_DIR" ]; then
     echo -e "${YELLOW}⚠️  Папка уже существует${NC}"
+    
+    # Исправляем права (на случай если папка создана от root)
+    sudo chown -R $USER:$USER $INSTALL_DIR
+    
     cd $INSTALL_DIR
     git pull origin main
     echo -e "${GREEN}✅ Код обновлён${NC}"
@@ -85,7 +89,6 @@ else
 fi
 
 echo ""
-
 # ============================================
 # ШАГ 4: Создание .env
 # ============================================
