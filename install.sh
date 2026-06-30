@@ -69,7 +69,26 @@ sudo chown -R $USER:$USER $DATA_DIR
 
 echo -e "${GREEN}✅ Папки созданы${NC}"
 echo ""
+# ============================================
+# ШАГ 2.5: Копирование шаблона базы данных
+# ============================================
+echo -e "${BLUE} Шаг 2.5/7: Установка шаблона базы данных...${NC}"
 
+if [ -f "template.db" ]; then
+    if [ ! -f "$DATA_DIR/nocodb-data/noco.db" ]; then
+        echo "Копирую готовый шаблон NocoDB..."
+        cp template.db "$DATA_DIR/nocodb-data/noco.db"
+        # Устанавливаем правильные права для Docker
+        sudo chown 1000:1000 "$DATA_DIR/nocodb-data/noco.db"
+        echo -e "${GREEN}✅ Шаблон скопирован${NC}"
+    else
+        echo -e "${YELLOW}⚠️  База данных уже существует, пропускаю копирование шаблона${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠️  Файл template.db не найден, будет создана пустая база${NC}"
+fi
+
+echo ""
 echo -e "${BLUE}📥 Шаг 3/7: Скачивание кода с GitHub...${NC}"
 
 INSTALL_DIR="/opt/printed4u-crm"
