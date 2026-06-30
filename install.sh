@@ -197,17 +197,9 @@ sed -i "s|NOCO_URL=.*|NOCO_URL=http://nocodb:8080|" .env
 
 echo -e "${GREEN}✅ Токены сохранены${NC}"
 echo ""
+echo -e "${GREEN}✅ NocoDB настроен с готовым шаблоном${NC}"
+echo -e "${YELLOW}   Все таблицы уже созданы: Дела, Контакты, Проекты, Документы, Позиции заказа, Юрлица, Мои реквизиты${NC}"
 
-echo -e "${BLUE}🚀 Запускаю автоматическую настройку таблиц...${NC}"
-cd $INSTALL_DIR
-
-docker run --rm \
-  --network printed4u-crm_default \
-  -v $INSTALL_DIR/.env:/app/.env:ro \
-  -v $INSTALL_DIR/setup.js:/app/setup.js:ro \
-  node:18-alpine node /app/setup.js
-
-echo ""
 echo -e "${GREEN}╔═══════════════════════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║   🎉 Установка завершена!                                 ║${NC}"
 echo -e "${GREEN}╚═══════════════════════════════════════════════════════════╝${NC}"
