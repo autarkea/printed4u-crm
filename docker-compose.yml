@@ -1,23 +1,21 @@
 services:
-  # NocoDB - база данных (SQLite)
   nocodb:
     image: nocodb/nocodb:latest
     container_name: nocodb
     restart: unless-stopped
     environment:
-      - NC_AUTH_JWT_SECRET=${JWT_SECRET:-your_jwt_secret_change_this}
-      - NC_DB=sqlite:///usr/app/data/nocodb.db
+      - NC_AUTH_JWT_SECRET=${JWT_SECRET:-default_jwt_secret_change_this}
     volumes:
       - /mnt/data/nocodb:/usr/app/data
     ports:
       - "8081:8080"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
+      start_period: 60s
 
-  # Telegram бот + PDF генератор
   bot:
     build:
       context: .
@@ -37,7 +35,6 @@ services:
       nocodb:
         condition: service_healthy
 
-  # Вебхук для создания папок проектов
   webhook:
     build:
       context: .
