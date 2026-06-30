@@ -1,4 +1,3 @@
-cd /mnt/data/dev/printed4u-crm
 rm -f install.sh
 
 cat > install.sh << 'SCRIPT_END'
