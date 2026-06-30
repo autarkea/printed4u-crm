@@ -1,3 +1,7 @@
+cd /mnt/data/dev/printed4u-crm
+rm -f install.sh
+
+cat > install.sh << 'SCRIPT_END'
 #!/bin/bash
 
 set -e
@@ -10,11 +14,27 @@ NC='\033[0m'
 
 echo -e "${BLUE}═══════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║   Printed4U CRM - Автоматическая установка             ║${NC}"
-echo -e "${BLUE}║   Версия: 1.1.0 (с NocoDB + SQLite)                     ║${NC}"
+echo -e "${BLUE}║   Версия: 1.2.0 (полный автомат)                        ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-echo -e "${BLUE}📦 Шаг 1/6: Проверка и установка Docker...${NC}"
+# Определяем IP
+LOCAL_IP=$(hostname -I | awk '{print $1}')
+PUBLIC_IP=$(curl -s ifconfig.me 2>/dev/null || echo "не определён")
+
+if [[ "$LOCAL_IP" == "192.168."* ]] || [[ "$LOCAL_IP" == "10."* ]] || [[ "$LOCAL_IP" == "172."* ]]; then
+    SERVER_TYPE="local"
+    ACCESS_IP="$LOCAL_IP"
+else
+    SERVER_TYPE="vps"
+    ACCESS_IP="$PUBLIC_IP"
+fi
+
+echo -e "${BLUE}🌐 Тип сервера: $SERVER_TYPE${NC}"
+echo -e "${BLUE}📡 IP адрес: $ACCESS_IP${NC}"
+echo ""
+
+echo -e "${BLUE}📦 Шаг 1/7: Проверка и установка Docker...${NC}"
 
 if ! command -v docker &> /dev/null; then
     echo -e "${YELLOW}⚠️  Docker не установлен. Устанавливаю...${NC}"
@@ -35,17 +55,14 @@ else
 fi
 
 if ! command -v git &> /dev/null; then
-    echo -e "${YELLOW}⚠️  Git не установлен. Устанавливаю...${NC}"
     sudo apt-get update
     sudo apt-get install -y git
     echo -e "${GREEN}✅ Git установлен${NC}"
-else
-    echo -e "${GREEN}✅ Git найден${NC}"
 fi
 
 echo ""
 
-echo -e "${BLUE}📁 Шаг 2/6: Создание папок...${NC}"
+echo -e "${BLUE}📁 Шаг 2/7: Создание папок...${NC}"
 
 DATA_DIR="/mnt/data"
 sudo mkdir -p $DATA_DIR/projects
@@ -58,12 +75,11 @@ sudo chown -R $USER:$USER $DATA_DIR
 echo -e "${GREEN}✅ Папки созданы${NC}"
 echo ""
 
-echo -e "${BLUE}📥 Шаг 3/6: Скачивание кода с GitHub...${NC}"
+echo -e "${BLUE}📥 Шаг 3/7: Скачивание кода с GitHub...${NC}"
 
 INSTALL_DIR="/opt/printed4u-crm"
 
 if [ -d "$INSTALL_DIR" ]; then
-    echo -e "${YELLOW}⚠️  Папка уже существует${NC}"
     sudo chown -R $USER:$USER $INSTALL_DIR
     cd $INSTALL_DIR
     git pull origin main
@@ -78,7 +94,7 @@ fi
 
 echo ""
 
-echo -e "${BLUE}⚙️  Шаг 4/6: Настройка конфигурации...${NC}"
+echo -e "${BLUE}⚙️  Шаг 4/7: Настройка конфигурации...${NC}"
 
 ENV_FILE="$INSTALL_DIR/.env"
 
@@ -104,16 +120,6 @@ fi
 read -p "Telegram User ID: " user_id
 if [ ! -z "$user_id" ]; then
     sed -i "s/TELEGRAM_USER_ID=.*/TELEGRAM_USER_ID=$user_id/" .env
-fi
-
-read -p "NocoDB API Token: " noco_token
-if [ ! -z "$noco_token" ]; then
-    sed -i "s/NOCO_TOKEN=.*/NOCO_TOKEN=$noco_token/" .env
-fi
-
-read -p "NocoDB Base ID: " base_id
-if [ ! -z "$base_id" ]; then
-    sed -i "s/BASE_ID=.*/BASE_ID=$base_id/" .env
 fi
 
 read -p "SMTP Host: " smtp_host
@@ -142,52 +148,61 @@ sed -i "s/JWT_SECRET=.*/JWT_SECRET=$JWT_SECRET/" .env
 echo -e "${GREEN}✅ .env настроен${NC}"
 echo ""
 
-echo -e "${BLUE}🐳 Шаг 5/6: Запуск контейнеров (это займёт 5-10 минут)...${NC}"
+echo -e "${BLUE}🐳 Шаг 5/7: Запуск контейнеров (это займёт 5-10 минут)...${NC}"
 
 docker compose up -d --build
 
 echo -e "${GREEN}✅ Контейнеры запущены${NC}"
 echo ""
 
-echo -e "${BLUE}🔍 Шаг 6/6: Проверка работы...${NC}"
+echo -e "${BLUE}⏳ Шаг 6/7: Ожидание запуска NocoDB...${NC}"
+sleep 15
 
-sleep 10
+echo -e "${BLUE}🔧 Шаг 7/7: Настройка NocoDB...${NC}"
+echo ""
+echo -e "${YELLOW}⚠️  ВАЖНО:${NC}"
+echo -e "${YELLOW}1. Открой в браузере: http://$ACCESS_IP:8081${NC}"
+echo -e "${YELLOW}2. Создай аккаунт (первый вход = регистрация)${NC}"
+echo -e "${YELLOW}3. Создай новую базу данных (например, 'CRM')${NC}"
+echo -e "${YELLOW}4. Скопируй API Token из настроек${NC}"
+echo -e "${YELLOW}5. Скопируй Base ID из URL${NC}"
+echo ""
+read -p "Когда создашь базу, нажми Enter для продолжения..."
 
-if docker compose ps nocodb | grep -q "Up"; then
-    echo -e "${GREEN}✅ NocoDB работает${NC}"
-    echo -e "${YELLOW}   Открой: http://localhost:8081${NC}"
-else
-    echo -e "${RED}❌ NocoDB не запустился${NC}"
+read -p "Вставь NocoDB API Token: " noco_token
+if [ ! -z "$noco_token" ]; then
+    sed -i "s/NOCO_TOKEN=.*/NOCO_TOKEN=$noco_token/" .env
 fi
 
-if docker compose ps bot | grep -q "Up"; then
-    echo -e "${GREEN}✅ Бот работает${NC}"
-else
-    echo -e "${RED}❌ Бот не запустился${NC}"
+read -p "Вставь Base ID: " base_id
+if [ ! -z "$base_id" ]; then
+    sed -i "s/BASE_ID=.*/BASE_ID=$base_id/" .env
 fi
 
-if docker compose ps webhook | grep -q "Up"; then
-    echo -e "${GREEN}✅ Вебхук работает${NC}"
-else
-    echo -e "${RED}❌ Вебхук не запустился${NC}"
-fi
+echo -e "${GREEN}✅ Токены сохранены${NC}"
+echo ""
+
+echo -e "${BLUE}🚀 Запускаю автоматическую настройку таблиц...${NC}"
+cd $INSTALL_DIR
+node setup-nocodb.js
 
 echo ""
 echo -e "${GREEN}╔═══════════════════════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║   🎉 Установка завершена!                                 ║${NC}"
 echo -e "${GREEN}╚═══════════════════════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "${BLUE}Следующие шаги:${NC}"
-echo "1. Открой http://localhost:8081"
-echo "2. Создай аккаунт в NocoDB"
-echo "3. Создай базу данных и таблицы"
-echo "4. Скопируй API Token и Base ID"
-echo "5. Отредактируй .env и добавь токены"
-echo "6. Перезапусти: docker compose restart"
+echo -e "${BLUE}🌐 Доступ к системе:${NC}"
+echo "   NocoDB: http://$ACCESS_IP:8081"
+echo "   Бот:    http://$ACCESS_IP:3000"
+echo "   Webhook: http://$ACCESS_IP:3001"
 echo ""
-echo -e "${BLUE}Полезные команды:${NC}"
+echo -e "${BLUE}📋 Полезные команды:${NC}"
 echo "  cd /opt/printed4u-crm"
 echo "  docker compose logs -f    # Логи"
 echo "  docker compose restart    # Перезапуск"
 echo "  docker compose down       # Остановить"
 echo ""
+SCRIPT_END
+
+chmod +x install.sh
+bash -n install.sh && echo "✅ Синтаксис правильный!" || echo "❌ Ошибка синтаксиса!"
