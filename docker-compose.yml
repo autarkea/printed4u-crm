@@ -1,6 +1,8 @@
 services:
   bot:
-    build: ./bot
+    build:
+      context: .
+      dockerfile: bot/Dockerfile
     container_name: printed4u-bot
     restart: unless-stopped
     env_file: .env
@@ -14,7 +16,9 @@ services:
       - "3000:3000"
 
   webhook:
-    build: ./webhook
+    build:
+      context: .
+      dockerfile: webhook/Dockerfile
     container_name: printed4u-webhook
     restart: unless-stopped
     env_file: .env
