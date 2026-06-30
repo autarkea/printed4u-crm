@@ -5,7 +5,7 @@ module.exports = {
     CRON_TIME: process.env.MORNING_CRON || '0 10 * * *',
     
     // NocoDB
-    NOCO_URL: process.env.NOCO_URL || 'http://host.docker.internal:8081/api/v1/db/data',
+    NOCO_URL: process.env.NOCO_URL || 'http://nocodb:8080/api/v1/db/data',
     NOCO_TOKEN: process.env.NOCO_TOKEN,
     BASE_ID: process.env.BASE_ID,
     

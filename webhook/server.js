@@ -32,7 +32,7 @@ function requireSecret(req, res, next) {
 
 
 const PORT = 3001;
-const NOCO_URL = 'http://localhost:8081/api/v1/db/data/sql';
+const NOCO_URL = process.env.NOCO_URL || 'http://nocodb:8080/api/v1/db/data/sql';
 const NOCO_TOKEN = process.env.NOCO_TOKEN;
 const BASE_ID = process.env.BASE_ID;
 const TABLE_PROJECTS = process.env.TABLE_PROJECTS;

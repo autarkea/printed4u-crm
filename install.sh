@@ -2,7 +2,7 @@
 
 # ============================================
 # Printed4U CRM - Автоматический установщик
-# Версия: 1.0.0
+# Версия: 1.1.0 (с NocoDB)
 # ============================================
 
 set -e
@@ -15,14 +15,14 @@ NC='\033[0m'
 
 echo -e "${BLUE}╔═══════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║   Printed4U CRM - Автоматическая установка             ║${NC}"
-echo -e "${BLUE}║   Версия: 1.0.0                                           ║${NC}"
+echo -e "${BLUE}║   Версия: 1.1.0 (с NocoDB + SQLite)                     ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
 # ============================================
 # ШАГ 1: Проверка зависимостей
 # ============================================
-echo -e "${BLUE}📦 Шаг 1/5: Проверка зависимостей...${NC}"
+echo -e "${BLUE}📦 Шаг 1/6: Проверка зависимостей...${NC}"
 
 if ! command -v docker &> /dev/null; then
     echo -e "${RED}❌ Docker не установлен${NC}"
@@ -51,7 +51,7 @@ echo ""
 # ============================================
 # ШАГ 2: Создание папок
 # ============================================
-echo -e "${BLUE}📁 Шаг 2/5: Создание папок...${NC}"
+echo -e "${BLUE}📁 Шаг 2/6: Создание папок...${NC}"
 
 DATA_DIR="/mnt/data"
 sudo mkdir -p $DATA_DIR/projects
@@ -63,19 +63,17 @@ sudo chown -R $USER:$USER $DATA_DIR
 
 echo -e "${GREEN}✅ Папки созданы${NC}"
 echo ""
+
 # ============================================
-# ШАГ 3: Скачивание кода с GitHub
+# ШАГ 3: Скачивание кода
 # ============================================
-echo -e "${BLUE}📥 Шаг 3/5: Скачивание кода с GitHub...${NC}"
+echo -e "${BLUE}📥 Шаг 3/6: Скачивание кода с GitHub...${NC}"
 
 INSTALL_DIR="/opt/printed4u-crm"
 
 if [ -d "$INSTALL_DIR" ]; then
     echo -e "${YELLOW}⚠️  Папка уже существует${NC}"
-    
-    # Исправляем права на случай если папка создана от root
     sudo chown -R $USER:$USER $INSTALL_DIR
-    
     cd $INSTALL_DIR
     git pull origin main
     echo -e "${GREEN}✅ Код обновлён${NC}"
@@ -88,10 +86,11 @@ else
 fi
 
 echo ""
+
 # ============================================
 # ШАГ 4: Создание .env
 # ============================================
-echo -e "${BLUE}⚙️  Шаг 4/5: Настройка конфигурации...${NC}"
+echo -e "${BLUE}⚙️  Шаг 4/6: Настройка конфигурации...${NC}"
 
 ENV_FILE="$INSTALL_DIR/.env"
 
@@ -117,11 +116,6 @@ fi
 read -p "Telegram User ID: " user_id
 if [ ! -z "$user_id" ]; then
     sed -i "s/TELEGRAM_USER_ID=.*/TELEGRAM_USER_ID=$user_id/" .env
-fi
-
-read -p "NocoDB URL: " noco_url
-if [ ! -z "$noco_url" ]; then
-    sed -i "s|NOCO_URL=.*|NOCO_URL=$noco_url|" .env
 fi
 
 read -p "NocoDB API Token: " noco_token
@@ -154,29 +148,47 @@ if [ ! -z "$webhook_secret" ]; then
     sed -i "s/WEBHOOK_SECRET=.*/WEBHOOK_SECRET=$webhook_secret/" .env
 fi
 
+# Генерируем JWT_SECRET для NocoDB
+JWT_SECRET=$(openssl rand -base64 32)
+sed -i "s/JWT_SECRET=.*/JWT_SECRET=$JWT_SECRET/" .env
+
 echo -e "${GREEN}✅ .env настроен${NC}"
 echo ""
 
 # ============================================
-# ШАГ 5: Запуск
+# ШАГ 5: Запуск контейнеров
 # ============================================
-echo -e "${BLUE}🐳 Шаг 5/5: Запуск контейнеров...${NC}"
+echo -e "${BLUE}🐳 Шаг 5/6: Запуск контейнеров (это займёт 5-10 минут)...${NC}"
 
 docker compose up -d --build
 
 echo -e "${GREEN}✅ Контейнеры запущены${NC}"
 echo ""
 
-# Проверка
-echo -e "${BLUE}🔍 Проверка...${NC}"
-sleep 5
+# ============================================
+# ШАГ 6: Проверка и настройка NocoDB
+# ============================================
+echo -e "${BLUE}🔍 Шаг 6/6: Проверка работы...${NC}"
 
+sleep 10
+
+# Проверяем NocoDB
+if docker compose ps nocodb | grep -q "Up"; then
+    echo -e "${GREEN}✅ NocoDB работает${NC}"
+    echo -e "${YELLOW}   Открой: http://localhost:8081${NC}"
+    echo -e "${YELLOW}   Создай базу данных и таблицы${NC}"
+else
+    echo -e "${RED}❌ NocoDB не запустился${NC}"
+fi
+
+# Проверяем бота
 if docker compose ps bot | grep -q "Up"; then
     echo -e "${GREEN}✅ Бот работает${NC}"
 else
     echo -e "${RED}❌ Бот не запустился${NC}"
 fi
 
+# Проверяем вебхук
 if docker compose ps webhook | grep -q "Up"; then
     echo -e "${GREEN}✅ Вебхук работает${NC}"
 else
@@ -188,7 +200,15 @@ echo -e "${GREEN}╔════════════════════
 echo -e "${GREEN}║   🎉 Установка завершена!                                 ║${NC}"
 echo -e "${GREEN}╚═══════════════════════════════════════════════════════════╝${NC}"
 echo ""
-echo "Полезные команды:"
+echo -e "${BLUE}Следующие шаги:${NC}"
+echo "1. Открой http://localhost:8081"
+echo "2. Создай аккаунт в NocoDB"
+echo "3. Создай базу данных и таблицы"
+echo "4. Скопируй API Token и Base ID"
+echo "5. Отредактируй .env и добавь токены"
+echo "6. Перезапусти: docker compose restart"
+echo ""
+echo -e "${BLUE}Полезные команды:${NC}"
 echo "  cd /opt/printed4u-crm"
 echo "  docker compose logs -f    # Логи"
 echo "  docker compose restart    # Перезапуск"
