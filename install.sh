@@ -25,7 +25,7 @@ echo ""
 echo -e "${BLUE}📦 Шаг 1/5: Проверка зависимостей...${NC}"
 
 if ! command -v docker &> /dev/null; then
-    echo -e "${RED} Docker не установлен${NC}"
+    echo -e "${RED}❌ Docker не установлен${NC}"
     echo "Установи: sudo apt install docker.io docker-compose-plugin"
     exit 1
 else
@@ -65,14 +65,14 @@ echo -e "${GREEN}✅ Папки созданы${NC}"
 echo ""
 
 # ============================================
-# ШАГ 3: Скачивание кода
+# ШАГ 3: Скачивание кода с GitHub
 # ============================================
-echo -e "${BLUE} Шаг 3/5: Скачивание кода...${NC}"
+echo -e "${BLUE}📥 Шаг 3/5: Скачивание кода с GitHub...${NC}"
 
 INSTALL_DIR="/opt/printed4u-crm"
 
 if [ -d "$INSTALL_DIR" ]; then
-    echo -e "${YELLOW}️  Папка уже существует${NC}"
+    echo -e "${YELLOW}⚠️  Папка уже существует${NC}"
     cd $INSTALL_DIR
     git pull origin main
     echo -e "${GREEN}✅ Код обновлён${NC}"
@@ -187,6 +187,7 @@ echo -e "${GREEN}║   🎉 Установка завершена!              
 echo -e "${GREEN}╚═══════════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo "Полезные команды:"
+echo "  cd /opt/printed4u-crm"
 echo "  docker compose logs -f    # Логи"
 echo "  docker compose restart    # Перезапуск"
 echo "  docker compose down       # Остановить"
