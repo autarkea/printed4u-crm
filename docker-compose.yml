@@ -6,7 +6,7 @@ services:
     environment:
       - NC_AUTH_JWT_SECRET=${JWT_SECRET:-default_jwt_secret_change_this}
     volumes:
-      - /mnt/data/nocodb:/usr/app/data
+      - /mnt/data/nocodb-data:/usr/app/data
     ports:
       - "8081:8080"
     healthcheck:

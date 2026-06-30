@@ -64,7 +64,7 @@ sudo mkdir -p $DATA_DIR/projects
 sudo mkdir -p $DATA_DIR/clients
 sudo mkdir -p $DATA_DIR/noco-static/pdfs
 sudo mkdir -p $DATA_DIR/backups
-sudo mkdir -p $DATA_DIR/nocodb
+sudo mkdir -p $DATA_DIR/nocodb-data
 sudo chown -R $USER:$USER $DATA_DIR
 
 echo -e "${GREEN}✅ Папки созданы${NC}"
