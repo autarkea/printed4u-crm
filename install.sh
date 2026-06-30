@@ -1,6 +1,3 @@
-rm -f install.sh
-
-cat > install.sh << 'SCRIPT_END'
 #!/bin/bash
 
 set -e
@@ -13,11 +10,10 @@ NC='\033[0m'
 
 echo -e "${BLUE}═══════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║   Printed4U CRM - Автоматическая установка             ║${NC}"
-echo -e "${BLUE}║   Версия: 1.2.0 (полный автомат)                        ║${NC}"
+echo -e "${BLUE}║   Версия: 1.3.0 (с NocoDB + автонастройка)             ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# Определяем IP
 LOCAL_IP=$(hostname -I | awk '{print $1}')
 PUBLIC_IP=$(curl -s ifconfig.me 2>/dev/null || echo "не определён")
 
@@ -164,7 +160,7 @@ echo -e "${YELLOW}1. Открой в браузере: http://$ACCESS_IP:8081${N
 echo -e "${YELLOW}2. Создай аккаунт (первый вход = регистрация)${NC}"
 echo -e "${YELLOW}3. Создай новую базу данных (например, 'CRM')${NC}"
 echo -e "${YELLOW}4. Скопируй API Token из настроек${NC}"
-echo -e "${YELLOW}5. Скопируй Base ID из URL${NC}"
+echo -e "${YELLOW}5. Скопируй Base ID из URL (часть после /base/)${NC}"
 echo ""
 read -p "Когда создашь базу, нажми Enter для продолжения..."
 
@@ -178,12 +174,19 @@ if [ ! -z "$base_id" ]; then
     sed -i "s/BASE_ID=.*/BASE_ID=$base_id/" .env
 fi
 
+sed -i "s|NOCO_URL=.*|NOCO_URL=http://nocodb:8080|" .env
+
 echo -e "${GREEN}✅ Токены сохранены${NC}"
 echo ""
 
 echo -e "${BLUE}🚀 Запускаю автоматическую настройку таблиц...${NC}"
 cd $INSTALL_DIR
-node setup-nocodb.js
+
+docker run --rm \
+  --network printed4u-crm_default \
+  -v $INSTALL_DIR/.env:/app/.env:ro \
+  -v $INSTALL_DIR/setup.js:/app/setup.js:ro \
+  node:18-alpine node /app/setup.js
 
 echo ""
 echo -e "${GREEN}╔═══════════════════════════════════════════════════════════╗${NC}"
@@ -201,7 +204,3 @@ echo "  docker compose logs -f    # Логи"
 echo "  docker compose restart    # Перезапуск"
 echo "  docker compose down       # Остановить"
 echo ""
-SCRIPT_END
-
-chmod +x install.sh
-bash -n install.sh && echo "✅ Синтаксис правильный!" || echo "❌ Ошибка синтаксиса!"
