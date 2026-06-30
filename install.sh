@@ -1,10 +1,5 @@
 #!/bin/bash
 
-# ============================================
-# Printed4U CRM - Автоматический установщик
-# Версия: 1.1.0 (с NocoDB + SQLite)
-# ============================================
-
 set -e
 
 RED='\033[0;31m'
@@ -13,44 +8,21 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-echo -e "${BLUE}╔═══════════════════════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}═══════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║   Printed4U CRM - Автоматическая установка             ║${NC}"
 echo -e "${BLUE}║   Версия: 1.1.0 (с NocoDB + SQLite)                     ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# ============================================
-# ШАГ 1: Установка Docker (если нет)
-# ============================================
 echo -e "${BLUE}📦 Шаг 1/6: Проверка и установка Docker...${NC}"
 
 if ! command -v docker &> /dev/null; then
     echo -e "${YELLOW}⚠️  Docker не установлен. Устанавливаю...${NC}"
-    echo ""
-    
-    # Устанавливаем Docker официальным способом
-    curl -fsSL https://get.docker.com -o get-docker.sh
-    sudo sh get-docker.sh
-    rm get-docker.sh
-    
-    # Добавляем пользователя в группу docker
+    curl -fsSL https://get.docker.com | bash
     sudo usermod -aG docker $USER
-    
-    echo ""
     echo -e "${GREEN}✅ Docker установлен${NC}"
-    echo -e "${YELLOW}⚠️  Применяю изменения группы...${NC}"
-    
-    # Пробуем применить группу без перелогина
-    newgrp docker << 'ENDSCRIPT'
-    echo "Группа docker применена"
-ENDSCRIPT
-    
-    # Проверяем, работает ли docker
-    if ! docker ps &> /dev/null; then
-        echo -e "${YELLOW}⚠️  Требуется перезапуск сессии${NC}"
-        echo -e "${YELLOW}   Закрой терминал и открой снова, затем запусти скрипт повторно${NC}"
-        exit 0
-    fi
+    echo -e "${YELLOW}⚠️  Перезайди в систему и запусти скрипт снова${NC}"
+    exit 0
 else
     echo -e "${GREEN}✅ Docker: $(docker --version)${NC}"
 fi
@@ -73,9 +45,6 @@ fi
 
 echo ""
 
-# ============================================
-# ШАГ 2: Создание папок
-# ============================================
 echo -e "${BLUE}📁 Шаг 2/6: Создание папок...${NC}"
 
 DATA_DIR="/mnt/data"
@@ -89,9 +58,6 @@ sudo chown -R $USER:$USER $DATA_DIR
 echo -e "${GREEN}✅ Папки созданы${NC}"
 echo ""
 
-# ============================================
-# ШАГ 3: Скачивание кода
-# ============================================
 echo -e "${BLUE}📥 Шаг 3/6: Скачивание кода с GitHub...${NC}"
 
 INSTALL_DIR="/opt/printed4u-crm"
@@ -112,9 +78,6 @@ fi
 
 echo ""
 
-# ============================================
-# ШАГ 4: Создание .env
-# ============================================
 echo -e "${BLUE}⚙️  Шаг 4/6: Настройка конфигурации...${NC}"
 
 ENV_FILE="$INSTALL_DIR/.env"
@@ -173,16 +136,12 @@ if [ ! -z "$webhook_secret" ]; then
     sed -i "s/WEBHOOK_SECRET=.*/WEBHOOK_SECRET=$webhook_secret/" .env
 fi
 
-# Генерируем JWT_SECRET для NocoDB
 JWT_SECRET=$(openssl rand -base64 32)
 sed -i "s/JWT_SECRET=.*/JWT_SECRET=$JWT_SECRET/" .env
 
 echo -e "${GREEN}✅ .env настроен${NC}"
 echo ""
 
-# ============================================
-# ШАГ 5: Запуск контейнеров
-# ============================================
 echo -e "${BLUE}🐳 Шаг 5/6: Запуск контейнеров (это займёт 5-10 минут)...${NC}"
 
 docker compose up -d --build
@@ -190,14 +149,10 @@ docker compose up -d --build
 echo -e "${GREEN}✅ Контейнеры запущены${NC}"
 echo ""
 
-# ============================================
-# ШАГ 6: Проверка
-# ============================================
 echo -e "${BLUE}🔍 Шаг 6/6: Проверка работы...${NC}"
 
 sleep 10
 
-# Проверяем NocoDB
 if docker compose ps nocodb | grep -q "Up"; then
     echo -e "${GREEN}✅ NocoDB работает${NC}"
     echo -e "${YELLOW}   Открой: http://localhost:8081${NC}"
@@ -205,14 +160,12 @@ else
     echo -e "${RED}❌ NocoDB не запустился${NC}"
 fi
 
-# Проверяем бота
 if docker compose ps bot | grep -q "Up"; then
     echo -e "${GREEN}✅ Бот работает${NC}"
 else
     echo -e "${RED}❌ Бот не запустился${NC}"
 fi
 
-# Проверяем вебхук
 if docker compose ps webhook | grep -q "Up"; then
     echo -e "${GREEN}✅ Вебхук работает${NC}"
 else
