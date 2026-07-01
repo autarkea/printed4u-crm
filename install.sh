@@ -173,12 +173,12 @@ echo -e "${BLUE}🔧 Шаг 7/7: Настройка NocoDB...${NC}"
 echo ""
 echo -e "${YELLOW}⚠️  ВАЖНО:${NC}"
 echo -e "${YELLOW}1. Открой в браузере: http://$ACCESS_IP:8081${NC}"
-echo -e "${YELLOW}2. Создай аккаунт (первый вход = регистрация)${NC}"
-echo -e "${YELLOW}3. NocoDB уже содержит базу 'CRM' со всеми таблицами${NC}"
-echo -e "${YELLOW}4. Скопируй API Token из настроек${NC}"
+echo -e "${YELLOW}2. Зарегистрируйся (создай первый аккаунт)${NC}"
+echo -e "${YELLOW}3. База 'CRM' уже создана со всеми таблицами${NC}"
+echo -e "${YELLOW}4. Скопируй API Token из настроек (Settings → API Tokens)${NC}"
 echo -e "${YELLOW}5. Скопируй Base ID из URL (часть после /base/)${NC}"
 echo ""
-read -p "Когда создашь аккаунт, нажми Enter для продолжения..."
+read -p "Когда зарегистрируешься и скопируешь токены, нажми Enter..."
 
 read -p "Вставь NocoDB API Token: " noco_token
 if [ ! -z "$noco_token" ]; then
@@ -195,6 +195,15 @@ sed -i "s|NOCO_URL=.*|NOCO_URL=http://nocodb:8080|" .env
 echo -e "${GREEN}✅ Токены сохранены${NC}"
 echo ""
 
+# Привязываем пользователя к workspace
+echo -e "${BLUE}🔧 Привязка пользователя к workspace...${NC}"
+if [ -f "fix-workspace.sh" ]; then
+    bash fix-workspace.sh
+else
+    echo -e "${YELLOW}⚠️  Скрипт fix-workspace.sh не найден, пропускаю${NC}"
+fi
+
+echo ""
 echo -e "${GREEN}✅ NocoDB настроен с готовым шаблоном${NC}"
 echo -e "${YELLOW}   Все таблицы уже созданы: Дела, Контакты, Проекты, Документы, Позиции заказа, Юрлица, Мои реквизиты${NC}"
 echo ""
