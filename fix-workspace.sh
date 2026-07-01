@@ -11,8 +11,15 @@ if [ ! -f "$DB_PATH" ]; then
     exit 1
 fi
 
-# Используем Docker-контейнер с sqlite3 (не засоряет хост)
-SQLITE_CMD="docker run --rm -v /mnt/data/nocodb-data:/data alpine/sqlite3:latest /data/noco.db"
+# Проверяем, запущен ли NocoDB
+if ! docker ps | grep -q nocodb; then
+    echo "❌ NocoDB не запущен. Запустите: docker compose up -d nocodb"
+    exit 1
+fi
+
+# Используем sqlite3 внутри контейнера NocoDB
+# Внутри контейнера база смонтирована как /usr/app/data/noco.db
+SQLITE_CMD="docker exec nocodb sqlite3 /usr/app/data/noco.db"
 
 # Находим workspace
 WORKSPACE_ID=$($SQLITE_CMD "SELECT id FROM nc_org LIMIT 1;")
