@@ -69,23 +69,17 @@ sudo chown -R $USER:$USER $DATA_DIR
 echo -e "${GREEN}✅ Папки созданы${NC}"
 echo ""
 
-echo -e "${BLUE}📦 Шаг 2.5/7: Установка шаблона базы данных...${NC}"
-
+# ============================================
+# ШАГ 2.5: Шаблон базы данных (будет применён позже)
+# ============================================
+echo -e "${BLUE}📦 Шаг 2.5/7: Проверка шаблона базы данных...${NC}"
 if [ -f "template.db" ]; then
-    if [ ! -f "$DATA_DIR/nocodb-data/noco.db" ]; then
-        echo "Копирую готовый шаблон NocoDB..."
-        cp template.db "$DATA_DIR/nocodb-data/noco.db"
-        sudo chown 1000:1000 "$DATA_DIR/nocodb-data/noco.db"
-        echo -e "${GREEN}✅ Шаблон скопирован${NC}"
-    else
-        echo -e "${YELLOW}⚠️  База данных уже существует, пропускаю копирование шаблона${NC}"
-    fi
+    echo -e "${GREEN}✅ Шаблон найден, будет применён после регистрации${NC}"
 else
-    echo -e "${YELLOW}⚠️  Файл template.db не найден, будет создана пустая база${NC}"
+    echo -e "${RED}❌ Файл template.db не найден!${NC}"
+    exit 1
 fi
-
 echo ""
-
 echo -e "${BLUE}📥 Шаг 3/7: Скачивание кода с GitHub...${NC}"
 
 INSTALL_DIR="/opt/printed4u-crm"
@@ -174,7 +168,7 @@ echo ""
 echo -e "${YELLOW}⚠️  ВАЖНО:${NC}"
 echo -e "${YELLOW}1. Открой в браузере: http://$ACCESS_IP:8081${NC}"
 echo -e "${YELLOW}2. Зарегистрируйся (создай первый аккаунт)${NC}"
-echo -e "${YELLOW}3. База 'CRM' уже создана со всеми таблицами${NC}"
+echo -e "${YELLOW}3. NocoDB создаст workspace и пустую базу автоматически${NC}"
 echo -e "${YELLOW}4. Скопируй API Token из настроек (Settings → API Tokens)${NC}"
 echo -e "${YELLOW}5. Скопируй Base ID из URL (часть после /base/)${NC}"
 echo ""
@@ -195,21 +189,28 @@ sed -i "s|NOCO_URL=.*|NOCO_URL=http://nocodb:8080|" .env
 echo -e "${GREEN}✅ Токены сохранены${NC}"
 echo ""
 
-# Привязываем пользователя к workspace
-echo -e "${BLUE}🔧 Привязка пользователя к workspace...${NC}"
+# Останавливаем NocoDB для применения шаблона
+echo -e "${BLUE}🔄 Останавливаю NocoDB для применения шаблона...${NC}"
+docker compose stop nocodb
+sleep 3
+
+# Применяем шаблон базы данных
+echo -e "${BLUE}📦 Применяю шаблон базы данных...${NC}"
 if [ -f "fix-workspace.sh" ]; then
     bash fix-workspace.sh
-    
-    # ВАЖНО: Перезапускаем NocoDB, чтобы он подхватил изменения
-    echo ""
-    echo -e "${YELLOW}🔄 Перезапускаю NocoDB для применения изменений...${NC}"
-    docker compose restart nocodb
-    sleep 10
-    echo -e "${GREEN}✅ NocoDB перезапущен${NC}"
 else
-    echo -e "${YELLOW}⚠️  Скрипт fix-workspace.sh не найден, пропускаю${NC}"
+    echo -e "${RED}❌ Скрипт fix-workspace.sh не найден!${NC}"
+    exit 1
 fi
 
+# Запускаем NocoDB обратно
+echo -e "${BLUE}🚀 Запускаю NocoDB...${NC}"
+docker compose start nocodb
+sleep 15
+
+echo ""
+echo -e "${GREEN}✅ NocoDB настроен с готовым шаблоном${NC}"
+echo -e "${YELLOW}   Все таблицы уже созданы: Дела, Контакты, Проекты, Документы, Позиции заказа, Юрлица, Мои реквизиты${NC}"
 echo ""
 echo -e "${GREEN}✅ NocoDB настроен с готовым шаблоном${NC}"
 echo -e "${YELLOW}   Все таблицы уже созданы: Дела, Контакты, Проекты, Документы, Позиции заказа, Юрлица, Мои реквизиты${NC}"
