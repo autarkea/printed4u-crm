@@ -197,6 +197,19 @@ sed -i "s|NOCO_URL=.*|NOCO_URL=http://nocodb:8080|" .env
 
 echo -e "${GREEN}✅ Токены сохранены${NC}"
 echo ""
+echo ""
+echo -e "${BLUE}🔧 Шаг 7.5: Привязка пользователя к workspace...${NC}"
+echo -e "${YELLOW}⚠️  ВАЖНО: Сначала зарегистрируйтесь в NocoDB (${YELLOW}http://$ACCESS_IP:8081${YELLOW}), затем нажмите Enter${NC}"
+read -p "Когда зарегистрируетесь, нажмите Enter..."
+
+# Запускаем скрипт перепривязки
+if [ -f "fix-workspace.sh" ]; then
+    bash fix-workspace.sh
+else
+    echo -e "${YELLOW}⚠️  Скрипт fix-workspace.sh не найден, пропускаю${NC}"
+fi
+
+echo ""
 echo -e "${GREEN}✅ NocoDB настроен с готовым шаблоном${NC}"
 echo -e "${YELLOW}   Все таблицы уже созданы: Дела, Контакты, Проекты, Документы, Позиции заказа, Юрлица, Мои реквизиты${NC}"
 
