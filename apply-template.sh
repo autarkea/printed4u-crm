@@ -38,8 +38,7 @@ echo "   User: $USER_ID"
 # 4. Получаем базу (кроме Getting Started)
 BASE_ID=$(run_sql "SELECT id FROM nc_bases_v2 WHERE title != 'Getting Started' LIMIT 1;")
 if [ -z "$BASE_ID" ]; then
-    echo "⚠️  База не найдена, создаю..."
-    # Копируем базу из шаблона
+    echo "⚠️  База не найдена, использую базу из шаблона..."
     BASE_ID=$(docker run --rm -v $(pwd)/$TEMPLATE:/template.db:ro alpine:latest sh -c '
         apk add --no-cache sqlite >/dev/null 2>&1
         sqlite3 /template.db "SELECT id FROM nc_bases_v2 LIMIT 1;"
@@ -48,8 +47,9 @@ if [ -z "$BASE_ID" ]; then
 fi
 echo "   Base: $BASE_ID"
 
-# 5. Копируем шаблон как рабочую базу
+# 5. Удаляем старую базу (если есть) и копируем шаблон
 echo "📦 Копирую шаблон..."
+sudo rm -f "$DB_PATH"
 cp "$TEMPLATE" "$DB_PATH"
 sudo chown 1000:1000 "$DB_PATH"
 
@@ -96,8 +96,11 @@ docker run --rm \
     -v /mnt/data/nocodb-data:/data \
     alpine:latest sh -c "
     apk add --no-cache sqlite >/dev/null 2>&1
-    sqlite3 /data/noco.db \"INSERT INTO nc_users_v2 (id, email, password, salt, role, invite_token, reset_password_req, created_at, updated_at) SELECT id, email, password, salt, role, invite_token, reset_password_req, created_at, updated_at FROM (SELECT '$USER_ID' as id, 'user@example.com' as email, '' as password, '' as salt, 'org.owner' as role, NULL as invite_token, 0 as reset_password_req, datetime('now') as created_at, datetime('now') as updated_at);\"
     
+    # Создаём пользователя (упрощённая версия)
+    sqlite3 /data/noco.db \"INSERT INTO nc_users_v2 (id, email, password, salt, role, invite_token, reset_password_req, created_at, updated_at) VALUES ('$USER_ID', 'user@example.com', '', '', 'org.owner', NULL, 0, datetime('now'), datetime('now'));\"
+    
+    # Добавляем привязки
     sqlite3 /data/noco.db \"INSERT INTO nc_org_users (fk_org_id, fk_user_id, roles, created_at, updated_at) VALUES ('$WORKSPACE_ID', '$USER_ID', '[\\\"org.owner\\\"]', datetime('now'), datetime('now'));\"
     
     sqlite3 /data/noco.db \"INSERT INTO nc_base_users_v2 (base_id, fk_user_id, roles, fk_workspace_id, created_at, updated_at) SELECT id, '$USER_ID', '[\\\"owner\\\"]', '$WORKSPACE_ID', datetime('now'), datetime('now') FROM nc_bases_v2 WHERE title != 'Getting Started' LIMIT 1;\"
