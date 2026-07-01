@@ -199,6 +199,13 @@ echo ""
 echo -e "${BLUE}🔧 Привязка пользователя к workspace...${NC}"
 if [ -f "fix-workspace.sh" ]; then
     bash fix-workspace.sh
+    
+    # ВАЖНО: Перезапускаем NocoDB, чтобы он подхватил изменения
+    echo ""
+    echo -e "${YELLOW}🔄 Перезапускаю NocoDB для применения изменений...${NC}"
+    docker compose restart nocodb
+    sleep 10
+    echo -e "${GREEN}✅ NocoDB перезапущен${NC}"
 else
     echo -e "${YELLOW}⚠️  Скрипт fix-workspace.sh не найден, пропускаю${NC}"
 fi
@@ -206,8 +213,6 @@ fi
 echo ""
 echo -e "${GREEN}✅ NocoDB настроен с готовым шаблоном${NC}"
 echo -e "${YELLOW}   Все таблицы уже созданы: Дела, Контакты, Проекты, Документы, Позиции заказа, Юрлица, Мои реквизиты${NC}"
-echo ""
-
 echo -e "${GREEN}╔═══════════════════════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║   🎉 Установка завершена!                                 ║${NC}"
 echo -e "${GREEN}╚═══════════════════════════════════════════════════════════╝${NC}"
