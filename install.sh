@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -e
 
 RED='\033[0;31m'
@@ -10,7 +9,7 @@ NC='\033[0m'
 
 echo -e "${BLUE}═══════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║   Printed4U CRM - Автоматическая установка             ║${NC}"
-echo -e "${BLUE}║   Версия: 1.3.0 (с NocoDB + автонастройка)             ║${NC}"
+echo -e "${BLUE}║   Версия: 1.4.0 (с шаблоном NocoDB)                   ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -69,16 +68,13 @@ sudo chown -R $USER:$USER $DATA_DIR
 
 echo -e "${GREEN}✅ Папки созданы${NC}"
 echo ""
-# ============================================
-# ШАГ 2.5: Копирование шаблона базы данных
-# ============================================
-echo -e "${BLUE} Шаг 2.5/7: Установка шаблона базы данных...${NC}"
+
+echo -e "${BLUE}📦 Шаг 2.5/7: Установка шаблона базы данных...${NC}"
 
 if [ -f "template.db" ]; then
     if [ ! -f "$DATA_DIR/nocodb-data/noco.db" ]; then
         echo "Копирую готовый шаблон NocoDB..."
         cp template.db "$DATA_DIR/nocodb-data/noco.db"
-        # Устанавливаем правильные права для Docker
         sudo chown 1000:1000 "$DATA_DIR/nocodb-data/noco.db"
         echo -e "${GREEN}✅ Шаблон скопирован${NC}"
     else
@@ -89,6 +85,7 @@ else
 fi
 
 echo ""
+
 echo -e "${BLUE}📥 Шаг 3/7: Скачивание кода с GitHub...${NC}"
 
 INSTALL_DIR="/opt/printed4u-crm"
@@ -128,36 +125,36 @@ echo ""
 
 read -p "Telegram Bot Token: " bot_token
 if [ ! -z "$bot_token" ]; then
-    sed -i "s/TELEGRAM_BOT_TOKEN=.*/TELEGRAM_BOT_TOKEN=$bot_token/" .env
+    sed -i "s|TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=$bot_token|" .env
 fi
 
 read -p "Telegram User ID: " user_id
 if [ ! -z "$user_id" ]; then
-    sed -i "s/TELEGRAM_USER_ID=.*/TELEGRAM_USER_ID=$user_id/" .env
+    sed -i "s|TELEGRAM_USER_ID=.*|TELEGRAM_USER_ID=$user_id|" .env
 fi
 
 read -p "SMTP Host: " smtp_host
 if [ ! -z "$smtp_host" ]; then
-    sed -i "s/SMTP_HOST=.*/SMTP_HOST=$smtp_host/" .env
+    sed -i "s|SMTP_HOST=.*|SMTP_HOST=$smtp_host|" .env
 fi
 
 read -p "SMTP User: " smtp_user
 if [ ! -z "$smtp_user" ]; then
-    sed -i "s/SMTP_USER=.*/SMTP_USER=$smtp_user/" .env
+    sed -i "s|SMTP_USER=.*|SMTP_USER=$smtp_user|" .env
 fi
 
 read -p "SMTP Password: " smtp_pass
 if [ ! -z "$smtp_pass" ]; then
-    sed -i "s/SMTP_PASS=.*/SMTP_PASS=$smtp_pass/" .env
+    sed -i "s|SMTP_PASS=.*|SMTP_PASS=$smtp_pass|" .env
 fi
 
 read -p "Webhook Secret: " webhook_secret
 if [ ! -z "$webhook_secret" ]; then
-    sed -i "s/WEBHOOK_SECRET=.*/WEBHOOK_SECRET=$webhook_secret/" .env
+    sed -i "s|WEBHOOK_SECRET=.*|WEBHOOK_SECRET=$webhook_secret|" .env
 fi
 
 JWT_SECRET=$(openssl rand -base64 32)
-sed -i "s/JWT_SECRET=.*/JWT_SECRET=$JWT_SECRET/" .env
+sed -i "s|JWT_SECRET=.*|JWT_SECRET=$JWT_SECRET|" .env
 
 echo -e "${GREEN}✅ .env настроен${NC}"
 echo ""
@@ -177,41 +174,30 @@ echo ""
 echo -e "${YELLOW}⚠️  ВАЖНО:${NC}"
 echo -e "${YELLOW}1. Открой в браузере: http://$ACCESS_IP:8081${NC}"
 echo -e "${YELLOW}2. Создай аккаунт (первый вход = регистрация)${NC}"
-echo -e "${YELLOW}3. Создай новую базу данных (например, 'CRM')${NC}"
+echo -e "${YELLOW}3. NocoDB уже содержит базу 'CRM' со всеми таблицами${NC}"
 echo -e "${YELLOW}4. Скопируй API Token из настроек${NC}"
 echo -e "${YELLOW}5. Скопируй Base ID из URL (часть после /base/)${NC}"
 echo ""
-read -p "Когда создашь базу, нажми Enter для продолжения..."
+read -p "Когда создашь аккаунт, нажми Enter для продолжения..."
 
 read -p "Вставь NocoDB API Token: " noco_token
 if [ ! -z "$noco_token" ]; then
-    sed -i "s/NOCO_TOKEN=.*/NOCO_TOKEN=$noco_token/" .env
+    sed -i "s|NOCO_TOKEN=.*|NOCO_TOKEN=$noco_token|" .env
 fi
 
 read -p "Вставь Base ID: " base_id
 if [ ! -z "$base_id" ]; then
-    sed -i "s/BASE_ID=.*/BASE_ID=$base_id/" .env
+    sed -i "s|BASE_ID=.*|BASE_ID=$base_id|" .env
 fi
 
 sed -i "s|NOCO_URL=.*|NOCO_URL=http://nocodb:8080|" .env
 
 echo -e "${GREEN}✅ Токены сохранены${NC}"
 echo ""
-echo ""
-echo -e "${BLUE}🔧 Шаг 7.5: Привязка пользователя к workspace...${NC}"
-echo -e "${YELLOW}⚠️  ВАЖНО: Сначала зарегистрируйтесь в NocoDB (${YELLOW}http://$ACCESS_IP:8081${YELLOW}), затем нажмите Enter${NC}"
-read -p "Когда зарегистрируетесь, нажмите Enter..."
 
-# Запускаем скрипт перепривязки
-if [ -f "fix-workspace.sh" ]; then
-    bash fix-workspace.sh
-else
-    echo -e "${YELLOW}⚠️  Скрипт fix-workspace.sh не найден, пропускаю${NC}"
-fi
-
-echo ""
 echo -e "${GREEN}✅ NocoDB настроен с готовым шаблоном${NC}"
 echo -e "${YELLOW}   Все таблицы уже созданы: Дела, Контакты, Проекты, Документы, Позиции заказа, Юрлица, Мои реквизиты${NC}"
+echo ""
 
 echo -e "${GREEN}╔═══════════════════════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║   🎉 Установка завершена!                                 ║${NC}"
