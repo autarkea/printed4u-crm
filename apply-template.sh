@@ -3,122 +3,111 @@ set -e
 
 DB_PATH="/mnt/data/nocodb-data/noco.db"
 TEMPLATE="template.db"
+BACKUP="/tmp/noco_backup.db"
 
 echo "🔧 Применение шаблона базы данных..."
 
-# 1. Функция для SQL
-run_sql() {
-    docker run --rm -v /mnt/data/nocodb-data:/data \
-        alpine:latest sh -c '
-        apk add --no-cache sqlite >/dev/null 2>&1
-        sqlite3 /data/noco.db "'"$1"'"
-    '
-}
+# 1. Делаем бэкап текущей базы (с пользователем)
+echo "💾 Делаю бэкап текущей базы..."
+sudo cp "$DB_PATH" "$BACKUP"
+sudo chmod 666 "$BACKUP"
 
-# 2. Получаем ID базы "Getting Started"
-GETTING_STARTED_ID=$(run_sql "SELECT id FROM nc_bases_v2 WHERE title = 'Getting Started' LIMIT 1;")
-if [ -z "$GETTING_STARTED_ID" ]; then
-    echo "⚠️  База 'Getting Started' не найдена"
-else
-    echo "🗑️  Удаляю базу 'Getting Started' (ID: $GETTING_STARTED_ID)..."
-    
-    # Удаляем базу
-    run_sql "DELETE FROM nc_bases_v2 WHERE id = '$GETTING_STARTED_ID';"
-    
-    # Удаляем источники данных
-    run_sql "DELETE FROM nc_sources_v2 WHERE base_id = '$GETTING_STARTED_ID';"
-    
-    # Удаляем привязки пользователей
-    run_sql "DELETE FROM nc_base_users_v2 WHERE base_id = '$GETTING_STARTED_ID';"
-    
-    # Удаляем таблицы (они имеют префикс nc_XXXXX___)
-    TABLES=$(run_sql "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'nc_${GETTING_STARTED_ID:0:6}___%';")
-    if [ ! -z "$TABLES" ]; then
-        echo "$TABLES" | while IFS= read -r TABLE; do
-            echo "   Удаляю таблицу: $TABLE"
-            run_sql "DROP TABLE IF EXISTS \"$TABLE\";"
-        done
-    fi
-    
-    echo "✅ База 'Getting Started' удалена"
-fi
+# 2. Получаем данные из бэкапа
+WORKSPACE_ID=$(docker run --rm -v /tmp:/tmp alpine:latest sh -c '
+    apk add --no-cache sqlite >/dev/null 2>&1
+    sqlite3 /tmp/noco_backup.db "SELECT id FROM nc_org LIMIT 1;"
+')
 
-# 3. Получаем ID текущей базы (должна быть одна)
-CURRENT_BASE_ID=$(run_sql "SELECT id FROM nc_bases_v2 LIMIT 1;")
-if [ -z "$CURRENT_BASE_ID" ]; then
-    echo "❌ База не найдена"
+USER_ID=$(docker run --rm -v /tmp:/tmp alpine:latest sh -c '
+    apk add --no-cache sqlite >/dev/null 2>&1
+    sqlite3 /tmp/noco_backup.db "SELECT id FROM nc_users_v2 LIMIT 1;"
+')
+
+if [ -z "$USER_ID" ]; then
+    echo "❌ Пользователь не найден в бэкапе"
     exit 1
 fi
-echo "📦 Текущая база: $CURRENT_BASE_ID"
+echo "   User: $USER_ID"
 
-# 4. Копируем таблицы из template.db
-echo "📦 Копирую таблицы из шаблона..."
+# Если workspace нет в бэкапе — создаём новый
+if [ -z "$WORKSPACE_ID" ]; then
+    echo "⚠️  Workspace не найден в бэкапе, создаю..."
+    WORKSPACE_ID="w$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1)"
+fi
+echo "   Workspace: $WORKSPACE_ID"
 
-# Получаем список таблиц из template
-TEMPLATE_TABLES=$(docker run --rm -v $(pwd)/$TEMPLATE:/template.db:ro alpine:latest sh -c '
-    apk add --no-cache sqlite >/dev/null 2>&1
-    sqlite3 /template.db "SELECT name FROM sqlite_master WHERE type='"'"'table'"'"' AND name LIKE '"'"'nc_nw7q___%'"'"';"
-')
+# 3. Копируем template.db как рабочую базу
+echo "📦 Копирую template.db..."
+sudo rm -f "$DB_PATH"
+cp "$TEMPLATE" "$DB_PATH"
+sudo chown 1000:1000 "$DB_PATH"
 
-# Копируем каждую таблицу
-echo "$TEMPLATE_TABLES" | while IFS= read -r TABLE; do
-    if [ ! -z "$TABLE" ]; then
-        echo "   Копирую: $TABLE"
-        
-        # Создаём таблицу в текущей базе
-        docker run --rm \
-            -v /mnt/data/nocodb-data:/data \
-            -v $(pwd)/$TEMPLATE:/template.db:ro \
-            alpine:latest sh -c '
-            apk add --no-cache sqlite >/dev/null 2>&1
-            
-            # Получаем схему таблицы из template
-            SCHEMA=$(sqlite3 /template.db ".schema '"$TABLE"'")
-            
-            # Создаём таблицу в текущей базе
-            sqlite3 /data/noco.db "$SCHEMA"
-            
-            # Копируем данные (если есть)
-            sqlite3 /data/noco.db "ATTACH DATABASE '"'"'/template.db'"'"' AS template; INSERT INTO '"$TABLE"' SELECT * FROM template.'"$TABLE"'; DETACH template;"
-        '
-    fi
-done
+# 4. Создаём SQL для обновления
+SQL_FILE="/tmp/patch.sql"
+cat > "$SQL_FILE" <<EOF
+-- Подключаем бэкап
+ATTACH DATABASE '/tmp/noco_backup.db' AS backup;
 
-echo "✅ Таблицы скопированы"
+-- Удаляем старые данные из template
+DELETE FROM nc_org;
+DELETE FROM nc_users_v2;
+DELETE FROM nc_org_users;
+DELETE FROM nc_base_users_v2;
+DELETE FROM nc_user_refresh_tokens;
+DELETE FROM nc_api_tokens;
 
-# 5. Обновляем метаданные в nc_models_v2, nc_columns_v2 и т.д.
-echo "🔧 Обновляю метаданные..."
+-- Удаляем базу "Getting Started" из template
+DELETE FROM nc_bases_v2 WHERE title = 'Getting Started';
+DELETE FROM nc_sources_v2 WHERE base_id NOT IN (SELECT id FROM nc_bases_v2);
 
-# Получаем source_id из template
-TEMPLATE_SOURCE_ID=$(docker run --rm -v $(pwd)/$TEMPLATE:/template.db:ro alpine:latest sh -c '
-    apk add --no-cache sqlite >/dev/null 2>&1
-    sqlite3 /template.db "SELECT id FROM nc_sources_v2 LIMIT 1;"
-')
+-- Копируем пользователя из бэкапа (сохраняем хеш пароля!)
+INSERT INTO nc_users_v2 SELECT * FROM backup.nc_users_v2;
 
-# Создаём source в текущей базе
-run_sql "INSERT INTO nc_sources_v2 (id, base_id, type, config, created_at, updated_at) VALUES ('$TEMPLATE_SOURCE_ID', '$CURRENT_BASE_ID', 'sqlite3', '{}', datetime('now'), datetime('now'));"
+-- Копируем refresh tokens
+INSERT INTO nc_user_refresh_tokens SELECT * FROM backup.nc_user_refresh_tokens;
 
-# Копируем метаданные таблиц
+-- Создаём workspace
+INSERT INTO nc_org (id, title, meta, created_at, updated_at)
+VALUES ('$WORKSPACE_ID', 'Printed4U CRM', '{"icon":"⛳","iconType":"EMOJI"}', datetime('now'), datetime('now'));
+
+-- Копируем секретные ключи из бэкапа
+DELETE FROM nc_store WHERE key IN ('nc_auth_jwt_secret', 'nc_server_id', 'NC_DEFAULT_WORKSPACE_ID');
+INSERT INTO nc_store (type, key, value, created_at, updated_at)
+SELECT type, key, value, created_at, updated_at FROM backup.nc_store
+WHERE key IN ('nc_auth_jwt_secret', 'nc_server_id');
+
+-- Устанавливаем NC_DEFAULT_WORKSPACE_ID
+INSERT INTO nc_store (type, key, value, created_at, updated_at)
+VALUES ('db', 'NC_DEFAULT_WORKSPACE_ID', '$WORKSPACE_ID', datetime('now'), datetime('now'));
+
+-- Обновляем workspace_id в базах и источниках
+UPDATE nc_bases_v2 SET fk_workspace_id = '$WORKSPACE_ID';
+UPDATE nc_sources_v2 SET fk_workspace_id = '$WORKSPACE_ID';
+
+-- Добавляем привязки пользователя
+INSERT INTO nc_org_users (fk_org_id, fk_user_id, roles, created_at, updated_at)
+SELECT '$WORKSPACE_ID', id, '["org.owner"]', datetime('now'), datetime('now')
+FROM nc_users_v2 LIMIT 1;
+
+INSERT INTO nc_base_users_v2 (base_id, fk_user_id, roles, fk_workspace_id, created_at, updated_at)
+SELECT b.id, u.id, '["owner"]', '$WORKSPACE_ID', datetime('now'), datetime('now')
+FROM nc_bases_v2 b, nc_users_v2 u
+LIMIT 1;
+
+DETACH backup;
+EOF
+
+# 5. Применяем SQL
+echo "🔧 Применяю настройки..."
 docker run --rm \
     -v /mnt/data/nocodb-data:/data \
-    -v $(pwd)/$TEMPLATE:/template.db:ro \
+    -v /tmp:/tmp \
     alpine:latest sh -c '
     apk add --no-cache sqlite >/dev/null 2>&1
-    
-    # Копируем nc_models_v2 (таблицы)
-    sqlite3 /data/noco.db "ATTACH DATABASE '"'"'/template.db'"'"' AS template; INSERT INTO nc_models_v2 SELECT * FROM template.nc_models_v2; DETACH template;"
-    
-    # Копируем nc_columns_v2 (колонки)
-    sqlite3 /data/noco.db "ATTACH DATABASE '"'"'/template.db'"'"' AS template; INSERT INTO nc_columns_v2 SELECT * FROM template.nc_columns_v2; DETACH template;"
-    
-    # Копируем nc_views_v2 (представления)
-    sqlite3 /data/noco.db "ATTACH DATABASE '"'"'/template.db'"'"' AS template; INSERT INTO nc_views_v2 SELECT * FROM template.nc_views_v2; DETACH template;"
-    
-    # Копируем nc_col_relations_v2 (связи)
-    sqlite3 /data/noco.db "ATTACH DATABASE '"'"'/template.db'"'"' AS template; INSERT INTO nc_col_relations_v2 SELECT * FROM template.nc_col_relations_v2; DETACH template;"
+    sqlite3 /data/noco.db < /tmp/patch.sql
 '
 
-echo "✅ Метаданные обновлены"
+# 6. Убираем временные файлы
+sudo rm -f "$BACKUP" "$SQL_FILE"
 
-echo ""
-echo "✅ Шаблон успешно применён!"
+echo "✅ Шаблон применён!"
