@@ -9,7 +9,7 @@ NC='\033[0m'
 
 echo -e "${BLUE}═══════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║   Printed4U CRM - Автоматическая установка             ║${NC}"
-echo -e "${BLUE}║   Версия: 2.0.0 (шаблон после регистрации)            ║${NC}"
+echo -e "${BLUE}║   Версия: 3.0.0 (NocoDB CE compatible)                ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -182,32 +182,26 @@ echo -e "${BLUE}⏳ Шаг 6/7: Ожидание запуска NocoDB...${NC}"
 sleep 15
 
 # ============================================
-# ШАГ 7: Регистрация + шаблон
+# ШАГ 7: Регистрация + применение шаблона
 # ============================================
 echo -e "${BLUE}🔧 Шаг 7/7: Настройка NocoDB...${NC}"
 echo ""
 echo -e "${YELLOW}⚠️  ИНСТРУКЦИЯ:${NC}"
 echo -e "${YELLOW}1. Открой в браузере: http://$ACCESS_IP:8081${NC}"
 echo -e "${YELLOW}2. Зарегистрируйся (создай первый аккаунт)${NC}"
-echo -e "${YELLOW}3. НЕ создавай базу — она появится автоматически${NC}"
+echo -e "${YELLOW}3. NocoDB создаст default workspace автоматически${NC}"
 echo -e "${YELLOW}4. Скопируй API Token (Settings → API Tokens → New Token)${NC}"
-echo -e "${YELLOW}5. Скопируй Base ID из URL (часть после /base/)${NC}"
 echo ""
-read -p "Когда всё сделаешь, нажми Enter..."
+read -p "Когда зарегистрируешься, нажми Enter..."
 
 read -p "Вставь NocoDB API Token: " noco_token
 if [ ! -z "$noco_token" ]; then
     sed -i "s|NOCO_TOKEN=.*|NOCO_TOKEN=$noco_token|" .env
 fi
 
-read -p "Вставь Base ID: " base_id
-if [ ! -z "$base_id" ]; then
-    sed -i "s|BASE_ID=.*|BASE_ID=$base_id|" .env
-fi
-
 sed -i "s|NOCO_URL=.*|NOCO_URL=http://nocodb:8080|" .env
 
-echo -e "${GREEN}✅ Токены сохранены${NC}"
+echo -e "${GREEN}✅ Токен сохранён${NC}"
 echo ""
 
 # Останавливаем NocoDB
