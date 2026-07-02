@@ -12,7 +12,7 @@ echo "💾 Делаю бэкап текущей базы..."
 sudo cp "$DB_PATH" "$BACKUP"
 sudo chmod 666 "$BACKUP"
 
-# 2. Получаем данные из бэкапа (default workspace, который создал NocoDB)
+# 2. Получаем данные из бэкапа
 WORKSPACE_ID=$(docker run --rm -v /tmp:/tmp alpine:latest sh -c '
     apk add --no-cache sqlite >/dev/null 2>&1
     sqlite3 /tmp/noco_backup.db "SELECT id FROM nc_org LIMIT 1;"
@@ -25,6 +25,14 @@ USER_ID=$(docker run --rm -v /tmp:/tmp alpine:latest sh -c '
 
 if [ -z "$WORKSPACE_ID" ] || [ -z "$USER_ID" ]; then
     echo "❌ Workspace или пользователь не найдены в бэкапе"
+    echo "Проверяем содержимое бэкапа..."
+    docker run --rm -v /tmp:/tmp alpine:latest sh -c '
+        apk add --no-cache sqlite >/dev/null 2>&1
+        echo "=== Workspace ==="
+        sqlite3 /tmp/noco_backup.db "SELECT COUNT(*) FROM nc_org;"
+        echo "=== Users ==="
+        sqlite3 /tmp/noco_backup.db "SELECT COUNT(*) FROM nc_users_v2;"
+    '
     exit 1
 fi
 echo "   Default Workspace: $WORKSPACE_ID"
@@ -39,7 +47,6 @@ sudo chown 1000:1000 "$DB_PATH"
 # 4. Создаём SQL для обновления
 SQL_FILE="/tmp/patch.sql"
 cat > "$SQL_FILE" <<EOF
--- Подключаем бэкап
 ATTACH DATABASE '/tmp/noco_backup.db' AS backup;
 
 -- Очищаем пользователей из template
