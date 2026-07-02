@@ -7,12 +7,12 @@ BACKUP="/tmp/noco_backup.db"
 
 echo "🔧 Применение шаблона базы данных..."
 
-# 1. Делаем бэкап текущей базы (с пользователем)
+# 1. Делаем бэкап текущей базы
 echo "💾 Делаю бэкап текущей базы..."
 sudo cp "$DB_PATH" "$BACKUP"
 sudo chmod 666 "$BACKUP"
 
-# 2. Получаем ID пользователя из бэкапа
+# 2. Получаем данные из бэкапа
 USER_ID=$(docker run --rm -v /tmp:/tmp alpine:latest sh -c '
     apk add --no-cache sqlite >/dev/null 2>&1
     sqlite3 /tmp/noco_backup.db "SELECT id FROM nc_users_v2 LIMIT 1;"
@@ -38,8 +38,13 @@ WORKSPACE_ID=$(docker run --rm -v /mnt/data/nocodb-data:/data alpine:latest sh -
 
 BASE_ID=$(docker run --rm -v /mnt/data/nocodb-data:/data alpine:latest sh -c '
     apk add --no-cache sqlite >/dev/null 2>&1
-    sqlite3 /data/noco.db "SELECT id FROM nc_bases_v2 WHERE title != '"'"'Getting Started'"'"' LIMIT 1;"
+    sqlite3 /data/noco.db "SELECT id FROM nc_bases_v2 LIMIT 1;"
 ')
+
+if [ -z "$WORKSPACE_ID" ]; then
+    echo "⚠️  Workspace не найден в template, создаю..."
+    WORKSPACE_ID="w$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1)"
+fi
 
 echo "   Workspace: $WORKSPACE_ID"
 echo "   Base: $BASE_ID"
@@ -47,42 +52,40 @@ echo "   Base: $BASE_ID"
 # 5. Создаём SQL для обновления
 SQL_FILE="/tmp/patch.sql"
 cat > "$SQL_FILE" <<EOF
--- Подключаем бэкап
 ATTACH DATABASE '/tmp/noco_backup.db' AS backup;
 
--- Удаляем старые данные из template
+-- Очищаем пользователей из template
 DELETE FROM nc_users_v2;
 DELETE FROM nc_org_users;
 DELETE FROM nc_base_users_v2;
 DELETE FROM nc_user_refresh_tokens;
 DELETE FROM nc_api_tokens;
 
--- Удаляем базу "Getting Started" из template
-DELETE FROM nc_bases_v2 WHERE title = 'Getting Started';
-DELETE FROM nc_sources_v2 WHERE base_id NOT IN (SELECT id FROM nc_bases_v2);
+-- Создаём workspace
+INSERT INTO nc_org (id, title, meta, created_at, updated_at)
+VALUES ('$WORKSPACE_ID', 'Printed4U CRM', '{"icon":"⛳","iconType":"EMOJI"}', datetime('now'), datetime('now'));
 
 -- Копируем пользователя из бэкапа (сохраняем хеш пароля!)
 INSERT INTO nc_users_v2 SELECT * FROM backup.nc_users_v2;
 
--- Копируем refresh tokens (чтобы сессия работала)
+-- Копируем refresh tokens
 INSERT INTO nc_user_refresh_tokens SELECT * FROM backup.nc_user_refresh_tokens;
 
--- Копируем секретные ключи из бэкапа
-DELETE FROM nc_store WHERE key IN ('nc_auth_jwt_secret', 'nc_server_id');
+-- Копируем секретные ключи
+DELETE FROM nc_store WHERE key IN ('nc_auth_jwt_secret', 'nc_server_id', 'NC_DEFAULT_WORKSPACE_ID');
 INSERT INTO nc_store (type, key, value, created_at, updated_at)
 SELECT type, key, value, created_at, updated_at FROM backup.nc_store
 WHERE key IN ('nc_auth_jwt_secret', 'nc_server_id');
 
 -- Устанавливаем NC_DEFAULT_WORKSPACE_ID
-DELETE FROM nc_store WHERE key = 'NC_DEFAULT_WORKSPACE_ID';
 INSERT INTO nc_store (type, key, value, created_at, updated_at)
 VALUES ('db', 'NC_DEFAULT_WORKSPACE_ID', '$WORKSPACE_ID', datetime('now'), datetime('now'));
 
--- Обновляем workspace_id в базах и источниках
+-- ВАЖНО: Обновляем workspace_id в базах и источниках!
 UPDATE nc_bases_v2 SET fk_workspace_id = '$WORKSPACE_ID';
 UPDATE nc_sources_v2 SET fk_workspace_id = '$WORKSPACE_ID';
 
--- СОЗДАЁМ НОВЫЕ привязки пользователя к workspace и базе из template
+-- Привязки пользователя к workspace и базе
 INSERT INTO nc_org_users (fk_org_id, fk_user_id, roles, created_at, updated_at)
 VALUES ('$WORKSPACE_ID', '$USER_ID', '["org.owner"]', datetime('now'), datetime('now'));
 
