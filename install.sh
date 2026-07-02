@@ -195,6 +195,19 @@ echo -e "${BLUE}🚀 Запускаю NocoDB...${NC}"
 docker compose start nocodb
 sleep 15
 
+# Автоматически устанавливаем BASE_ID
+echo -e "${BLUE}🔧 Устанавливаю BASE_ID...${NC}"
+BASE_ID=$(docker run --rm -v /mnt/data/nocodb-data:/data alpine:latest sh -c '
+    apk add --no-cache sqlite >/dev/null 2>&1
+    sqlite3 /data/noco.db "SELECT id FROM nc_bases_v2 WHERE title='"'"'CRM'"'"' LIMIT 1;"
+')
+if [ ! -z "$BASE_ID" ]; then
+    sed -i "s|BASE_ID=.*|BASE_ID=$BASE_ID|" .env
+    echo -e "${GREEN}✅ BASE_ID установлен: $BASE_ID${NC}"
+else
+    echo -e "${YELLOW}⚠️  База CRM не найдена, установи BASE_ID вручную${NC}"
+fi
+
 echo ""
 echo -e "${GREEN}✅ NocoDB настроен с готовым шаблоном${NC}"
 echo -e "${YELLOW}   Все таблицы уже созданы: Дела, Контакты, Проекты, Документы, Позиции заказа, Юрлица, Мои реквизиты${NC}"
