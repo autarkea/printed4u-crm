@@ -3,115 +3,122 @@ set -e
 
 DB_PATH="/mnt/data/nocodb-data/noco.db"
 TEMPLATE="template.db"
-BACKUP="/tmp/noco_backup.db"
 
 echo "🔧 Применение шаблона базы данных..."
 
 # 1. Функция для SQL
 run_sql() {
     docker run --rm -v /mnt/data/nocodb-data:/data \
-        -v /tmp:/tmp \
         alpine:latest sh -c '
         apk add --no-cache sqlite >/dev/null 2>&1
         sqlite3 /data/noco.db "'"$1"'"
     '
 }
 
-# 2. Делаем бэкап текущей базы (с настоящим пользователем и паролем)
-echo "💾 Делаю бэкап текущей базы..."
-sudo cp "$DB_PATH" "$BACKUP"
-sudo chmod 666 "$BACKUP"
-
-# 3. Получаем данные из текущей базы
-WORKSPACE_ID=$(run_sql "SELECT id FROM nc_org LIMIT 1;")
-if [ -z "$WORKSPACE_ID" ]; then
-    echo "⚠️  Workspace не найден, создаю..."
-    WORKSPACE_ID="w$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1)"
-    run_sql "INSERT INTO nc_org (id, title, meta, created_at, updated_at) VALUES ('$WORKSPACE_ID', 'Printed4U CRM', '{\"icon\":\"⛳\",\"iconType\":\"EMOJI\"}', datetime('now'), datetime('now'));"
-    run_sql "INSERT OR REPLACE INTO nc_store (type, key, value, created_at, updated_at) VALUES ('db', 'NC_DEFAULT_WORKSPACE_ID', '$WORKSPACE_ID', datetime('now'), datetime('now'));"
-    echo "✅ Workspace создан: $WORKSPACE_ID"
+# 2. Получаем ID базы "Getting Started"
+GETTING_STARTED_ID=$(run_sql "SELECT id FROM nc_bases_v2 WHERE title = 'Getting Started' LIMIT 1;")
+if [ -z "$GETTING_STARTED_ID" ]; then
+    echo "⚠️  База 'Getting Started' не найдена"
 else
-    echo "   Workspace: $WORKSPACE_ID"
+    echo "🗑️  Удаляю базу 'Getting Started' (ID: $GETTING_STARTED_ID)..."
+    
+    # Удаляем базу
+    run_sql "DELETE FROM nc_bases_v2 WHERE id = '$GETTING_STARTED_ID';"
+    
+    # Удаляем источники данных
+    run_sql "DELETE FROM nc_sources_v2 WHERE base_id = '$GETTING_STARTED_ID';"
+    
+    # Удаляем привязки пользователей
+    run_sql "DELETE FROM nc_base_users_v2 WHERE base_id = '$GETTING_STARTED_ID';"
+    
+    # Удаляем таблицы (они имеют префикс nc_XXXXX___)
+    TABLES=$(run_sql "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'nc_${GETTING_STARTED_ID:0:6}___%';")
+    if [ ! -z "$TABLES" ]; then
+        echo "$TABLES" | while IFS= read -r TABLE; do
+            echo "   Удаляю таблицу: $TABLE"
+            run_sql "DROP TABLE IF EXISTS \"$TABLE\";"
+        done
+    fi
+    
+    echo "✅ База 'Getting Started' удалена"
 fi
 
-USER_ID=$(run_sql "SELECT id FROM nc_users_v2 LIMIT 1;")
-if [ -z "$USER_ID" ]; then
-    echo "❌ Пользователь не найден"
+# 3. Получаем ID текущей базы (должна быть одна)
+CURRENT_BASE_ID=$(run_sql "SELECT id FROM nc_bases_v2 LIMIT 1;")
+if [ -z "$CURRENT_BASE_ID" ]; then
+    echo "❌ База не найдена"
     exit 1
 fi
-echo "   User: $USER_ID"
+echo "📦 Текущая база: $CURRENT_BASE_ID"
 
-# 4. Копируем шаблон как рабочую базу
-echo "📦 Копирую шаблон..."
-sudo rm -f "$DB_PATH"
-cp "$TEMPLATE" "$DB_PATH"
-sudo chown 1000:1000 "$DB_PATH"
+# 4. Копируем таблицы из template.db
+echo "📦 Копирую таблицы из шаблона..."
 
-# 5. Применяем всё одним SQL-файлом с ATTACH DATABASE
-SQL_FILE="/tmp/patch.sql"
-cat > "$SQL_FILE" <<EOF
--- Подключаем бэкап
-ATTACH DATABASE '/tmp/noco_backup.db' AS backup;
+# Получаем список таблиц из template
+TEMPLATE_TABLES=$(docker run --rm -v $(pwd)/$TEMPLATE:/template.db:ro alpine:latest sh -c '
+    apk add --no-cache sqlite >/dev/null 2>&1
+    sqlite3 /template.db "SELECT name FROM sqlite_master WHERE type='"'"'table'"'"' AND name LIKE '"'"'nc_nw7q___%'"'"';"
+')
 
--- Очищаем workspace и пользователей из шаблона
-DELETE FROM nc_org;
-DELETE FROM nc_users_v2;
-DELETE FROM nc_org_users;
-DELETE FROM nc_base_users_v2;
-DELETE FROM nc_user_refresh_tokens;
-DELETE FROM nc_api_tokens;
-DELETE FROM nc_bases_v2 WHERE title = 'Getting Started';
+# Копируем каждую таблицу
+echo "$TEMPLATE_TABLES" | while IFS= read -r TABLE; do
+    if [ ! -z "$TABLE" ]; then
+        echo "   Копирую: $TABLE"
+        
+        # Создаём таблицу в текущей базе
+        docker run --rm \
+            -v /mnt/data/nocodb-data:/data \
+            -v $(pwd)/$TEMPLATE:/template.db:ro \
+            alpine:latest sh -c '
+            apk add --no-cache sqlite >/dev/null 2>&1
+            
+            # Получаем схему таблицы из template
+            SCHEMA=$(sqlite3 /template.db ".schema '"$TABLE"'")
+            
+            # Создаём таблицу в текущей базе
+            sqlite3 /data/noco.db "$SCHEMA"
+            
+            # Копируем данные (если есть)
+            sqlite3 /data/noco.db "ATTACH DATABASE '"'"'/template.db'"'"' AS template; INSERT INTO '"$TABLE"' SELECT * FROM template.'"$TABLE"'; DETACH template;"
+        '
+    fi
+done
 
--- Копируем пользователя ЦЕЛИКОМ из бэкапа (сохраняем хеш пароля!)
-INSERT INTO nc_users_v2 SELECT * FROM backup.nc_users_v2;
+echo "✅ Таблицы скопированы"
 
--- Копируем refresh tokens из бэкапа (чтобы сессия работала)
-INSERT INTO nc_user_refresh_tokens SELECT * FROM backup.nc_user_refresh_tokens;
+# 5. Обновляем метаданные в nc_models_v2, nc_columns_v2 и т.д.
+echo "🔧 Обновляю метаданные..."
 
--- Создаём workspace
-INSERT INTO nc_org (id, title, meta, created_at, updated_at)
-VALUES ('$WORKSPACE_ID', 'Printed4U CRM', '{"icon":"⛳","iconType":"EMOJI"}', datetime('now'), datetime('now'));
+# Получаем source_id из template
+TEMPLATE_SOURCE_ID=$(docker run --rm -v $(pwd)/$TEMPLATE:/template.db:ro alpine:latest sh -c '
+    apk add --no-cache sqlite >/dev/null 2>&1
+    sqlite3 /template.db "SELECT id FROM nc_sources_v2 LIMIT 1;"
+')
 
--- Обновляем workspace_id в источниках и базах
-UPDATE nc_sources_v2 SET fk_workspace_id = '$WORKSPACE_ID';
-UPDATE nc_bases_v2 SET fk_workspace_id = '$WORKSPACE_ID';
+# Создаём source в текущей базе
+run_sql "INSERT INTO nc_sources_v2 (id, base_id, type, config, created_at, updated_at) VALUES ('$TEMPLATE_SOURCE_ID', '$CURRENT_BASE_ID', 'sqlite3', '{}', datetime('now'), datetime('now'));"
 
--- Устанавливаем NC_DEFAULT_WORKSPACE_ID
-DELETE FROM nc_store WHERE key = 'NC_DEFAULT_WORKSPACE_ID';
-INSERT INTO nc_store (type, key, value, created_at, updated_at)
-VALUES ('db', 'NC_DEFAULT_WORKSPACE_ID', '$WORKSPACE_ID', datetime('now'), datetime('now'));
-
--- Копируем секретные ключи из бэкапа
-DELETE FROM nc_store WHERE key IN ('nc_auth_jwt_secret', 'nc_server_id');
-INSERT INTO nc_store (type, key, value, created_at, updated_at)
-SELECT type, key, value, created_at, updated_at FROM backup.nc_store
-WHERE key IN ('nc_auth_jwt_secret', 'nc_server_id');
-
--- Добавляем привязки пользователя к workspace и базе
-INSERT INTO nc_org_users (fk_org_id, fk_user_id, roles, created_at, updated_at)
-SELECT '$WORKSPACE_ID', id, '["org.owner"]', datetime('now'), datetime('now')
-FROM nc_users_v2 LIMIT 1;
-
-INSERT INTO nc_base_users_v2 (base_id, fk_user_id, roles, fk_workspace_id, created_at, updated_at)
-SELECT b.id, u.id, '["owner"]', '$WORKSPACE_ID', datetime('now'), datetime('now')
-FROM nc_bases_v2 b, nc_users_v2 u
-WHERE b.title != 'Getting Started'
-LIMIT 1;
-
-DETACH backup;
-EOF
-
-# 6. Применяем SQL
-echo "🔧 Применяю настройки (копирую пользователя из бэкапа)..."
+# Копируем метаданные таблиц
 docker run --rm \
     -v /mnt/data/nocodb-data:/data \
-    -v /tmp:/tmp \
+    -v $(pwd)/$TEMPLATE:/template.db:ro \
     alpine:latest sh -c '
     apk add --no-cache sqlite >/dev/null 2>&1
-    sqlite3 /data/noco.db < /tmp/patch.sql
+    
+    # Копируем nc_models_v2 (таблицы)
+    sqlite3 /data/noco.db "ATTACH DATABASE '"'"'/template.db'"'"' AS template; INSERT INTO nc_models_v2 SELECT * FROM template.nc_models_v2; DETACH template;"
+    
+    # Копируем nc_columns_v2 (колонки)
+    sqlite3 /data/noco.db "ATTACH DATABASE '"'"'/template.db'"'"' AS template; INSERT INTO nc_columns_v2 SELECT * FROM template.nc_columns_v2; DETACH template;"
+    
+    # Копируем nc_views_v2 (представления)
+    sqlite3 /data/noco.db "ATTACH DATABASE '"'"'/template.db'"'"' AS template; INSERT INTO nc_views_v2 SELECT * FROM template.nc_views_v2; DETACH template;"
+    
+    # Копируем nc_col_relations_v2 (связи)
+    sqlite3 /data/noco.db "ATTACH DATABASE '"'"'/template.db'"'"' AS template; INSERT INTO nc_col_relations_v2 SELECT * FROM template.nc_col_relations_v2; DETACH template;"
 '
 
-# 7. Убираем временные файлы
-rm -f "$BACKUP" "$SQL_FILE"
+echo "✅ Метаданные обновлены"
 
-echo "✅ Шаблон применён с сохранением пароля пользователя!"
+echo ""
+echo "✅ Шаблон успешно применён!"
