@@ -20,20 +20,17 @@ run_sql_backup() {
     '
 }
 
-# 3. Получаем данные из бэкапа
-WORKSPACE_ID=$(run_sql_backup "SELECT id FROM nc_org LIMIT 1;")
+# 3. Ищем workspace в СТАРОЙ таблице `workspace` (NocoDB CE использует её!)
+WORKSPACE_ID=$(run_sql_backup "SELECT id FROM workspace LIMIT 1;")
 USER_ID=$(run_sql_backup "SELECT id FROM nc_users_v2 LIMIT 1;")
 
 if [ -z "$WORKSPACE_ID" ] || [ -z "$USER_ID" ]; then
     echo "❌ Workspace или пользователь не найдены в бэкапе"
     echo "   Workspace: '$WORKSPACE_ID'"
     echo "   User: '$USER_ID'"
-    echo ""
-    echo "💡 Подсказка: ты создал новую базу в NocoDB?"
-    echo "   Workspace создаётся только при создании базы."
     exit 1
 fi
-echo "   Workspace: $WORKSPACE_ID"
+echo "   Workspace (старая таблица): $WORKSPACE_ID"
 echo "   User: $USER_ID"
 
 # 4. Копируем template.db как рабочую базу
@@ -54,15 +51,23 @@ DELETE FROM nc_base_users_v2;
 DELETE FROM nc_user_refresh_tokens;
 DELETE FROM nc_api_tokens;
 
+-- Очищаем workspace (старая и новая таблицы)
+DELETE FROM workspace;
+DELETE FROM workspace_user;
+DELETE FROM nc_org;
+DELETE FROM nc_org_users;
+
 -- Копируем пользователя из бэкапа (сохраняем хеш пароля!)
 INSERT INTO nc_users_v2 SELECT * FROM backup.nc_users_v2;
 
 -- Копируем refresh tokens
 INSERT INTO nc_user_refresh_tokens SELECT * FROM backup.nc_user_refresh_tokens;
 
--- Создаём workspace с ТЕМ ЖЕ ID, что из бэкапа
-INSERT INTO nc_org (id, title, meta, created_at, updated_at)
-SELECT id, title, meta, created_at, updated_at FROM backup.nc_org;
+-- Копируем workspace из СТАРОЙ таблицы бэкапа
+INSERT INTO workspace SELECT * FROM backup.workspace;
+
+-- Копируем привязки пользователей к workspace
+INSERT INTO workspace_user SELECT * FROM backup.workspace_user;
 
 -- Копируем секретные ключи
 DELETE FROM nc_store WHERE key IN ('nc_auth_jwt_secret', 'nc_server_id', 'NC_DEFAULT_WORKSPACE_ID');
@@ -70,18 +75,11 @@ INSERT INTO nc_store (type, key, value, created_at, updated_at)
 SELECT type, key, value, created_at, updated_at FROM backup.nc_store
 WHERE key IN ('nc_auth_jwt_secret', 'nc_server_id', 'NC_DEFAULT_WORKSPACE_ID');
 
--- Устанавливаем NC_DEFAULT_WORKSPACE_ID
-INSERT INTO nc_store (type, key, value, created_at, updated_at)
-VALUES ('db', 'NC_DEFAULT_WORKSPACE_ID', '$WORKSPACE_ID', datetime('now'), datetime('now'));
-
 -- Обновляем workspace_id в базах и источниках
 UPDATE nc_bases_v2 SET fk_workspace_id = '$WORKSPACE_ID';
 UPDATE nc_sources_v2 SET fk_workspace_id = '$WORKSPACE_ID';
 
--- Привязки пользователя к workspace и базе
-INSERT INTO nc_org_users (fk_org_id, fk_user_id, roles, created_at, updated_at)
-VALUES ('$WORKSPACE_ID', '$USER_ID', '["org.owner"]', datetime('now'), datetime('now'));
-
+-- Привязки пользователя к базе
 INSERT INTO nc_base_users_v2 (base_id, fk_user_id, roles, fk_workspace_id, created_at, updated_at)
 SELECT b.id, '$USER_ID', '["owner"]', '$WORKSPACE_ID', datetime('now'), datetime('now')
 FROM nc_bases_v2 b
